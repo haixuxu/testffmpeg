@@ -9,7 +9,6 @@ site
 *.sh
 *.sh~
 release
-build
 dist
 # .env
 # .env-dev
