@@ -1,4 +1,4 @@
-import { api_getUserData } from "./request"
+import { resolveToken } from "./request"
 import { logger } from "./logger"
 import { LogLevel, EngineConfig, LyricModel, EngineEvents, BgmStatus, BgmType } from "./types"
 import mitt, { Emitter, Handler } from "mitt";
@@ -85,8 +85,9 @@ export class Engine {
   }
 
   async setUser(uid: string) {
-    const res = await api_getUserData(uid)
-    const { yinsuda_uid, token } = res.data
+    debugger;
+    const tokenInfo = await resolveToken(uid)
+    const { yinsuda_uid, token } = tokenInfo;
     this.userId = yinsuda_uid
     this.token = token
     await this.yinsudaClient.setUser({
