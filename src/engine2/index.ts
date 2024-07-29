@@ -4,6 +4,7 @@ import { LogLevel, EngineConfig, LyricModel, EngineEvents, BgmStatus, BgmType } 
 import mitt, { Emitter, Handler } from "mitt";
 import { parseKrcString } from "./utils"
 import "./yisudaSdk/index.umd.js"
+import { downloadSongById } from "./mockapi";
 
 export * from "./types"
 
@@ -85,7 +86,7 @@ export class Engine {
   }
 
   async setUser(uid: string) {
-    debugger;
+    // debugger;
     const tokenInfo = await resolveToken(uid)
     const { yinsuda_uid, token } = tokenInfo;
     this.userId = yinsuda_uid
@@ -227,7 +228,7 @@ export class Engine {
 
   destory() {
     this.reset()
-    this.audioContext.close()
+    this.audioContext?.close()
     this._emitter.all.clear()
     this.audioTrack?.close()
     this.audioTrack = undefined
@@ -287,7 +288,10 @@ export class Engine {
     if (isAccompany) {
       config.isAccompany = 1
     }
-    const res = await this.yinsudaClient.downloadSongById(config);
+
+   const res = await downloadSongById(config);
+    // const res = await this.yinsudaClient.downloadSongById(config);
+    
     logger.record("genBgmTracks download song success")
     const mp3Data = res.data.mp3Data
     let accompanyFile
