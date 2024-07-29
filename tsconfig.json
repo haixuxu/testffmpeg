@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "moduleResolution": "node",
+    "outDir": "lib",
+    "strictNullChecks": true,
+    "importHelpers": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationDir": ".",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitHelpers": true,
+    "noEmitOnError": false,
+    "emitDeclarationOnly": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react",
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "public/AgoraWebSDK_N", "public/assets/worker-lPYB70QI.js"],
+  "exclude": ["node_modules"]
+}
