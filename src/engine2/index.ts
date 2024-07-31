@@ -290,8 +290,8 @@ export class Engine {
     }
 
     // 使用mock的api
-   const res = await downloadSongById(config);
-    // const res = await this.yinsudaClient.downloadSongById(config);
+  //  const res = await downloadSongById(config);
+    const res = await this.yinsudaClient.downloadSongById(config);
     
     logger.record("genBgmTracks download song success")
     const mp3Data = res.data.mp3Data
