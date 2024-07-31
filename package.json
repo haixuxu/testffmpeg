@@ -31,7 +31,6 @@
     "vite-plugin-wasm": "^3.1.0",
     "vue-template-compiler": "^2.7.8",
     "yorkie": "^2.0.0",
-    "node-sass": "^8.0.0",
     "vitest": "^0.29.7",
     "protobufjs-cli": "^1.1.2",
     "vite-plugin-node-polyfills": "^0.21.0"
