@@ -6,43 +6,61 @@ export class AudioBufferSource extends AudioController {
   constructor(mp3Data, options = {}) {
     super(options);
     this.sourceNode = null;
+    this.nextSourceNode = null;
     this.audioBuffer = null;
     this.startPlayTime = 0;
     this.startPlayOffset = options.startPlayTime || 0;
     this.pausePlayTime = 0;
     this.options = options;
-    this.context = options.context;
     this.currentLoopCount = 0;
     this._currentState = "stopped";
     this.chunkQueue = []; // 用于存储解码后的音频块
     this.isDecoding = false;
+    this.isPreparingNextChunk = false;
     this.mp3Data = mp3Data; // 存储 MP3 数据
   }
 
   async decodeMP3DataInChunks() {
-    const chunkSize = 1024 * 8; // 每次解码64KB的数据块
+    const chunkSize = 1024 * 64; // 每次解码64KB的数据块
     for (let offset = 0; offset < this.mp3Data.length; offset += chunkSize) {
       const chunk = this.mp3Data.slice(offset, offset + chunkSize);
-      console.log('decode=====', chunk.buffer);
+      console.log('decode ====',chunk.buffer.byteLength);
       const decodedData = await this.context.decodeAudioData(chunk.buffer);
       this.chunkQueue.push(decodedData);
-      if (this.currentState === "playing") {
-        // 立即播放解码后的数据块
-        this.playNextChunk();
+      if (this.currentState === "playing" && !this.nextSourceNode) {
+        this.prepareNextChunk();
       }
     }
   }
 
-  playNextChunk() {
-    if (this.chunkQueue.length > 0 && !this.isDecoding) {
-      this.isDecoding = true;
+  prepareNextChunk() {
+    if (this.chunkQueue.length > 0 && !this.isPreparingNextChunk) {
+      this.isPreparingNextChunk = true;
       const nextBuffer = this.chunkQueue.shift();
-      this.sourceNode = this.createSourceNode(nextBuffer);
-      this.startSourceNode();
-      this.sourceNode.onended = () => {
-        this.isDecoding = false;
+      this.nextSourceNode = this.createSourceNode(nextBuffer);
+      this.nextSourceNode.onended = () => {
+        this.isPreparingNextChunk = false;
+        this.cleanUpBuffer(nextBuffer); // 清理已播放的缓冲区
         this.playNextChunk();
       };
+    }
+  }
+
+  playNextChunk() {
+    if (this.nextSourceNode) {
+      if (this.sourceNode) {
+        this.sourceNode.disconnect();
+      }
+      this.sourceNode = this.nextSourceNode;
+      this.startSourceNode();
+      this.nextSourceNode = null;
+      this.prepareNextChunk();
+    }
+  }
+
+  cleanUpBuffer(buffer) {
+    if (buffer) {
+      buffer = null;
     }
   }
 
@@ -90,6 +108,8 @@ export class AudioBufferSource extends AudioController {
     }
     this.currentState = "playing";
     this.decodeMP3DataInChunks();
+    this.prepareNextChunk(); // 提前准备第一个 chunk
+    this.playNextChunk(); // 开始播放第一个 chunk
   }
 
   pauseProcessAudioBuffer() {
@@ -103,8 +123,6 @@ export class AudioBufferSource extends AudioController {
   }
 
   seekAudioBuffer(time) {
-    // 实现跳转功能
-    // 由于是分块播放，跳转需要重新计算开始播放的位置
     if (this.sourceNode) {
       this.sourceNode.onended = null;
       if (this.currentState === "playing") {
@@ -113,6 +131,7 @@ export class AudioBufferSource extends AudioController {
       this.startPlayOffset = time;
       this.chunkQueue = []; // 清空当前队列
       this.isDecoding = false;
+      this.isPreparingNextChunk = false;
       this.startProcessAudioBuffer(); // 重新解码
     }
   }
@@ -169,9 +188,14 @@ export class AudioBufferSource extends AudioController {
     this.currentState = "stopped";
     this.chunkQueue = [];
     this.isDecoding = false;
+    this.isPreparingNextChunk = false;
     if (this.sourceNode) {
       this.sourceNode.disconnect();
       this.sourceNode = null;
+    }
+    if (this.nextSourceNode) {
+      this.nextSourceNode.disconnect();
+      this.nextSourceNode = null;
     }
     this.currentLoopCount = 0;
   }

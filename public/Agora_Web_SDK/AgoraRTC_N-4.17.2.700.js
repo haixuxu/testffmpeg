@@ -45060,40 +45060,42 @@
         );
       },
       createBufferSourceAudioTrack: async function (e) {
-        const t = Cg.reportApiInvoke(null, {
-          tag: Ef.TRACER,
-          name: _f.CREATE_BUFFER_AUDIO_TRACK,
-          options: [e],
-        });
-        if (GE("DISABLE_WEBAUDIO"))
-          throw new SE(
-            fE.NOT_SUPPORTED,
-            "can not create BufferSourceAudioTrack when WebAudio disabled"
-          );
+        // const t = Cg.reportApiInvoke(null, {
+        //   tag: Ef.TRACER,
+        //   name: _f.CREATE_BUFFER_AUDIO_TRACK,
+        //   options: [e],
+        // });
+        // if (GE("DISABLE_WEBAUDIO"))
+        //   throw new SE(
+        //     fE.NOT_SUPPORTED,
+        //     "can not create BufferSourceAudioTrack when WebAudio disabled"
+        //   );
+        let context = Ug();
         const i = Wv(8, "track-buf-");
-        OE.info(
-          "start create buffer source audio track with config",
-          JSON.stringify(e),
-          "trackId",
-          i
-        );
+        // OE.info(
+        //   "start create buffer source audio track with config",
+        //   JSON.stringify(e),
+        //   "trackId",
+        //   i
+        // );
         const n = e.source;
-        debugger;
-        if (!(e.source instanceof AudioBuffer)){
-          try {
-            e.source = await iD(e.source, e.cacheOnlineFile);
-          } catch (e) {
-            return t.onError(e), e.throw();
-          }
-        }
-        const r = new window.AudioBufferSourceCustom(e.source);
+        // if (!(e.source instanceof AudioBuffer)){
+        //   try {
+        //     e.source = await iD(e.source, e.cacheOnlineFile);
+        //   } catch (e) {
+        //     return t.onError(e), e.throw();
+        //   }
+        // }
+        const r = new window.AudioBufferSourceCustom(e.source,{context:context});
+        // debugger;
 const args11=e.encoderConfig ? FE(e.encoderConfig) : {};
         const  o = new fv(n, r, e.encoderConfig ? FE(e.encoderConfig) : {}, i);
-        return (
-          OE.info("create buffer source audio track success, trackId:", i),
-          t.onSuccess(o.getTrackId()),
-          o
-        );
+        return o;
+        // return (
+        //   OE.info("create buffer source audio track success, trackId:", i),
+        //   t.onSuccess(o.getTrackId()),
+        //   o
+        // );
       },
       setAppType: function (e) {
         if (

@@ -4,8 +4,8 @@ const isIOSSafari = /ios/i.test(navigator.userAgent)&&/safari/i.test(navigator.u
 
 
 export class AudioProcessor {
-    constructor() {
-      this.context = resolveContext();
+    constructor(opts) {
+      this.context = opts.context;
       this.analyserNode = this.context.createAnalyser();
       this.analyserNode.fftSize = 2048;
       this.analyserNode.smoothingTimeConstant = 0.4;

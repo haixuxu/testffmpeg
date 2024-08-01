@@ -17,13 +17,13 @@ function removeElementFromArray(array, element) {
     array.splice(index, 1);
   }
 }
-function handleAudioNode(audioNode) {
+function handleAudioNode(audioNode,context) {
   // Check if disconnecting a node that was never connected throws an error
   if (
     (function checkDisconnectError() {
       if (null !== jg) return jg;
 
-      const audioContext = resolveContext();
+      const audioContext = context;
       const bufferSource = audioContext.createBufferSource();
       const gainNode1 = audioContext.createGain();
       const gainNode2 = audioContext.createGain();
@@ -121,8 +121,8 @@ export class AudioController extends EventEmitter {
   }
 
   // 构造函数，用于初始化各种音频节点和状态
-  constructor() {
-    super();
+  constructor(opts) {
+    super(opts);
     this.outputNode = undefined;
     this.outputTrack = undefined;
     this.isPlayed = false;
@@ -139,12 +139,12 @@ export class AudioController extends EventEmitter {
     this.isNoAudioInput = false;
     this._noAudioInputCount = 0;
 
-    this.context = resolveContext();
+    this.context = opts.context;
     this.playNode = this.context.destination;
     this.outputNode = this.context.createGain();
 
-    handleAudioNode(this.outputNode);
-    this.volumeLevelAnalyser = new AudioProcessor();
+    handleAudioNode(this.outputNode, opts.context);
+    this.volumeLevelAnalyser = new AudioProcessor(opts);
   }
 
   // 开始获取音频缓冲区

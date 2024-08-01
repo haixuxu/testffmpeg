@@ -14,18 +14,18 @@ window.AudioBufferSourceCustom = AudioBufferSource;
 export * from "./types"
 
 
-async function mediaStreamTrackFromMp3data(mp3Data:Uint8Array){
-  const audioContext  = new AudioContext();
-  const audioBuffer = await audioContext.decodeAudioData(mp3Data.buffer);
-  const audioSource = audioContext.createBufferSource();
-  audioSource.buffer = audioBuffer;
+// async function mediaStreamTrackFromMp3data(mp3Data:Uint8Array){
+//   const audioContext  = new AudioContext();
+//   const audioBuffer = await audioContext.decodeAudioData(mp3Data.buffer);
+//   const audioSource = audioContext.createBufferSource();
+//   audioSource.buffer = audioBuffer;
 
-  const destination = audioContext.createMediaStreamDestination();
-  audioSource.connect(destination);
-  audioSource.start();
+//   const destination = audioContext.createMediaStreamDestination();
+//   audioSource.connect(destination);
+//   audioSource.start();
 
-  return destination.stream.getAudioTracks()[0];
-}
+//   return destination.stream.getAudioTracks()[0];
+// }
 
 declare global {
   interface Window {
@@ -229,9 +229,11 @@ export class Engine {
   async reset() {
     this.accompanyBgmTrack?.stopProcessAudioBuffer()
     this.accompanyBgmTrack?.close()
+    this.accompanyBgmTrack?._bufferSource.close();
     this.accompanyBgmTrack = undefined
     this.originalBgmTrack?.stopProcessAudioBuffer()
     this.originalBgmTrack?.close()
+    this.originalBgmTrack?._bufferSource.close();
     this.originalBgmTrack = undefined
     this.bgmStatus = BgmStatus.IDLE
     this.lyric = {} as LyricModel
@@ -319,8 +321,8 @@ export class Engine {
     // let tracks=[];
     if (mp3Data[0]) {
       // 伴奏
-      let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
-      accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
+      // let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
+      // accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
       // let track1 = await mediaStreamTrackFromMp3data(mp3Data[0]);
       // let bufferSource = new AudioBufferSource(mp3Data[0]);
       // let audioTrack = new BufferSourceAudioTrack()
@@ -329,25 +331,26 @@ export class Engine {
     }
     if (mp3Data[1]) {
       // 原唱
-      let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
-      originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
+      // let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
+      // originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
       // let track2 = await mediaStreamTrackFromMp3data(mp3Data[1]);
       // let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
       // tracks.push(rtrack2);
     }
     logger.record("genBgmTracks generate mp3 file success")
     let tasks = []
-    if (accompanyFile) {
+    if (true) {
       tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: accompanyFile,
+        source: mp3Data[0],
       }))
     }
-    if (originalFile) {
+    if (true) {
       tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: originalFile,
+        source: mp3Data[1],
       }))
     }
     const tracks = await Promise.all(tasks)
+    console.log("tracks===",tracks);
     logger.record("genBgmTracks create buffer source audio track success")
     this.accompanyBgmTrack = tracks[0]
     this.originalBgmTrack = tracks[1]

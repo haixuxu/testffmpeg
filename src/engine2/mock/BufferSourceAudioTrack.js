@@ -2,9 +2,6 @@ import { LocalAudioTrack } from "./LocalAudioTrack";
 
 // 定义 BufferSourceAudioTrack 类
 export class BufferSourceAudioTrack extends LocalAudioTrack {
-  get __className__() {
-    return "BufferSourceAudioTrack";
-  }
 
   constructor(source, bufferSource, outputTrack, options) {
     super(bufferSource.createOutputTrack(), outputTrack, options);
