@@ -1,4 +1,8 @@
-class AudioBufferSource extends Audio {
+import { AudioController } from "./AudioContrller";
+
+const AUDIO_SOURCE_STATE_CHANGE = "audio_source_state_change";
+
+export class AudioBufferSource extends AudioController {
     // 构造函数，用于初始化音频缓冲区和相关选项
     constructor(audioBuffer, options = {}) {
       super();
@@ -16,7 +20,7 @@ class AudioBufferSource extends Audio {
     set currentState(state) {
       if (state !== this._currentState) {
         this._currentState = state;
-        this.emit(Lf.AUDIO_SOURCE_STATE_CHANGE, this._currentState);
+        this.emit(AUDIO_SOURCE_STATE_CHANGE, this._currentState);
       }
     }
   
@@ -52,7 +56,7 @@ class AudioBufferSource extends Audio {
         this.options = options;
         this.startPlayOffset = this.options.startPlayTime || 0;
       } else {
-        OE.warning("Cannot set audio source options while playing");
+        console.warn("Cannot set audio source options while playing");
       }
     }
   

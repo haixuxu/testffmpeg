@@ -45078,14 +45078,17 @@
           i
         );
         const n = e.source;
-        if (!(e.source instanceof AudioBuffer))
+        debugger;
+        if (!(e.source instanceof AudioBuffer)){
           try {
             e.source = await iD(e.source, e.cacheOnlineFile);
           } catch (e) {
             return t.onError(e), e.throw();
           }
-        const r = new eD(e.source),
-          o = new fv(n, r, e.encoderConfig ? FE(e.encoderConfig) : {}, i);
+        }
+        const r = new window.AudioBufferSourceCustom(e.source);
+const args11=e.encoderConfig ? FE(e.encoderConfig) : {};
+        const  o = new fv(n, r, e.encoderConfig ? FE(e.encoderConfig) : {}, i);
         return (
           OE.info("create buffer source audio track success, trackId:", i),
           t.onSuccess(o.getTrackId()),

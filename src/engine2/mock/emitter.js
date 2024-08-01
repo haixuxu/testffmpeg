@@ -1,4 +1,4 @@
-class EventEmitter {
+export class EventEmitter {
     constructor() {
       // 存储所有事件及其对应的监听器
       this._events = {};

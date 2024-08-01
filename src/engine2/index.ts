@@ -5,8 +5,27 @@ import mitt, { Emitter, Handler } from "mitt";
 import { parseKrcString } from "./utils"
 import "./yisudaSdk/index.umd.js"
 import { downloadSongById } from "./mockapi";
+import { BufferSourceAudioTrack } from "./mock/BufferSourceAudioTrack";
+
+import { AudioBufferSource } from "./mock/AudioBufferSource";
+
+window.AudioBufferSourceCustom = AudioBufferSource;
 
 export * from "./types"
+
+
+async function mediaStreamTrackFromMp3data(mp3Data:Uint8Array){
+  const audioContext  = new AudioContext();
+  const audioBuffer = await audioContext.decodeAudioData(mp3Data.buffer);
+  const audioSource = audioContext.createBufferSource();
+  audioSource.buffer = audioBuffer;
+
+  const destination = audioContext.createMediaStreamDestination();
+  audioSource.connect(destination);
+  audioSource.start();
+
+  return destination.stream.getAudioTracks()[0];
+}
 
 declare global {
   interface Window {
@@ -290,22 +309,31 @@ export class Engine {
     }
 
     // 使用mock的api
-  //  const res = await downloadSongById(config);
-    const res = await this.yinsudaClient.downloadSongById(config);
+   const res = await downloadSongById(config);
+    // const res = await this.yinsudaClient.downloadSongById(config);
     
     logger.record("genBgmTracks download song success")
     const mp3Data = res.data.mp3Data
     let accompanyFile
     let originalFile
+    // let tracks=[];
     if (mp3Data[0]) {
       // 伴奏
       let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
       accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
+      // let track1 = await mediaStreamTrackFromMp3data(mp3Data[0]);
+      // let bufferSource = new AudioBufferSource(mp3Data[0]);
+      // let audioTrack = new BufferSourceAudioTrack()
+      // let rtrack1 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
+      // tracks.push(rtrack1);
     }
     if (mp3Data[1]) {
       // 原唱
       let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
       originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
+      // let track2 = await mediaStreamTrackFromMp3data(mp3Data[1]);
+      // let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
+      // tracks.push(rtrack2);
     }
     logger.record("genBgmTracks generate mp3 file success")
     let tasks = []

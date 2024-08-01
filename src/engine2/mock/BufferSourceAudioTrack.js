@@ -1,12 +1,13 @@
+import { LocalAudioTrack } from "./LocalAudioTrack";
 
 // 定义 BufferSourceAudioTrack 类
-class BufferSourceAudioTrack extends Ev {
+export class BufferSourceAudioTrack extends LocalAudioTrack {
   get __className__() {
     return "BufferSourceAudioTrack";
   }
 
   constructor(source, bufferSource, outputTrack, options) {
-    super(outputTrack.createOutputTrack(), bufferSource, options);
+    super(bufferSource.createOutputTrack(), outputTrack, options);
     this.source = source;
     this._bufferSource = bufferSource;
 
@@ -56,4 +57,3 @@ class BufferSourceAudioTrack extends Ev {
     this._bufferSource.stopProcessAudioBuffer();
   }
 }
-
