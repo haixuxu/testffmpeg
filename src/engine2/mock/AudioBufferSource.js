@@ -178,6 +178,7 @@ export class AudioBufferSource extends AudioController {
 
   close() {
     this.reset();
+    this.mp3Data= null;
     this.audioBuffer = null;
   }
 }
