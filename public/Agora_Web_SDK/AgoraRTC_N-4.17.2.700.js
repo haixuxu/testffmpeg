@@ -44292,7 +44292,7 @@
     const n = await (function (e) {
       const t = Ug();
       return new Sl((i, n) => {
-        t.decodeAudioData(
+        t.decodeAudioData1(
           e,
           (e) => {
             i(e);

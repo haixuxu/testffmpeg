@@ -24,7 +24,7 @@ class PCMProcessor extends AudioWorkletProcessor {
     if (!this.audioData) {
       this.audioData = []
     }
-    console.log(Date.now(),this.port, inputs);
+    // console.log(Date.now(),this.port, inputs);
     if (input[0]) {
       this.audioData.push(...input[0])
       if (this.audioData.length > MAX_NUM) {

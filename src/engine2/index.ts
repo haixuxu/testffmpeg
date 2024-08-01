@@ -8,23 +8,43 @@ import { downloadSongById } from "./mockapi";
 import { BufferSourceAudioTrack } from "./mock/BufferSourceAudioTrack";
 
 import { AudioBufferSource } from "./mock/AudioBufferSource";
+import { manager } from "./mock/Mp3MediaStreamTrackManager";
 
 window.AudioBufferSourceCustom = AudioBufferSource;
 
 export * from "./types"
 
 
-async function mediaStreamTrackFromMp3data(mp3Data:Uint8Array){
-  const audioContext  = new AudioContext();
-  const audioBuffer = await audioContext.decodeAudioData(mp3Data.buffer);
-  const audioSource = audioContext.createBufferSource();
-  audioSource.buffer = audioBuffer;
+async function createMediaStreamTrackFromMp3(mp3Data) {
+  return new Promise((resolve, reject) => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const mediaSource = new MediaSource();
 
-  const destination = audioContext.createMediaStreamDestination();
-  audioSource.connect(destination);
-  audioSource.start();
+    mediaSource.addEventListener('sourceopen', () => {
+      const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+      sourceBuffer.addEventListener('updateend', () => {
+        if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
+          mediaSource.endOfStream();
+        }
+      });
 
-  return destination.stream.getAudioTracks()[0];
+      sourceBuffer.appendBuffer(mp3Data);
+
+      const audioTrack = audioContext.createMediaElementSource(audioElement);
+      const destination = audioContext.createMediaStreamDestination();
+
+      audioTrack.connect(destination);
+      resolve(destination.stream.getAudioTracks()[0]);
+    });
+
+    const audioElement = document.createElement('audio');
+    audioElement.src = URL.createObjectURL(mediaSource);
+    audioElement.play();
+
+    mediaSource.addEventListener('error', (e) => {
+      reject(e);
+    });
+  });
 }
 
 declare global {
@@ -227,10 +247,10 @@ export class Engine {
   }
 
   async reset() {
-    this.accompanyBgmTrack?.stopProcessAudioBuffer()
+    // this.accompanyBgmTrack?.stopProcessAudioBuffer()
     this.accompanyBgmTrack?.close()
     this.accompanyBgmTrack = undefined
-    this.originalBgmTrack?.stopProcessAudioBuffer()
+    // this.originalBgmTrack?.stopProcessAudioBuffer()
     this.originalBgmTrack?.close()
     this.originalBgmTrack = undefined
     this.bgmStatus = BgmStatus.IDLE
@@ -321,9 +341,10 @@ export class Engine {
       // 伴奏
       // let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
       // accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
-      // let track1 = await mediaStreamTrackFromMp3data(mp3Data[0]);
-      let bufferSource = new AudioBufferSource(mp3Data[0]);
-      let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
+      let track1 = await manager.createMediaStreamTrackFromMp3(mp3Data[0],"accompany");
+      // let bufferSource = new AudioBufferSource(mp3Data[0]);
+      // let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
+      let audioTrack = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
       tracks.push(audioTrack);
       // let rtrack1 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
       // tracks.push(rtrack1);
@@ -332,12 +353,12 @@ export class Engine {
       // 原唱
       // let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
       // originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
-      // let track2 = await mediaStreamTrackFromMp3data(mp3Data[1]);
-      // let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
-      // tracks.push(rtrack2);
-      let bufferSource = new AudioBufferSource(mp3Data[1]);
-      let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
-      tracks.push(audioTrack);
+      let track2 = await manager.createMediaStreamTrackFromMp3(mp3Data[1],"original");
+      let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
+      tracks.push(rtrack2);
+      // let bufferSource = new AudioBufferSource(mp3Data[1]);
+      // let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
+      // tracks.push(audioTrack);
     }
     logger.record("genBgmTracks generate mp3 file success")
     // let tasks = []
@@ -363,8 +384,9 @@ export class Engine {
   }
 
   playBgm(bgmType: BgmType) {
-    this.originalBgmTrack?.startProcessAudioBuffer();
+    // this.originalBgmTrack?.startProcessAudioBuffer();
     this.originalBgmTrack?.play()
+    this.accompanyBgmTrack?.play()
     this.bgmStatus = BgmStatus.PLAYING
     this.bgmType = bgmType
     this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType })
@@ -374,40 +396,16 @@ export class Engine {
 
   toggleBgmTrack() {
     if (this.bgmType == BgmType.ORIGINAL) {
-      this.originalBgmTrack?.pauseProcessAudioBuffer();
+      // this.originalBgmTrack?.pauseProcessAudioBuffer();
       // switch to accompany
-      if (this.isAccompanyBgmStart) {
-        this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-        if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.accompanyBgmTrack?.resumeProcessAudioBuffer()
-        }
-      } else {
-        if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.accompanyBgmTrack?.startProcessAudioBuffer();
-          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-          this.accompanyBgmTrack?.play()
-        } else {
-          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-        }
-      }
+      this.originalBgmTrack?.setEnabled(false);
+      this.accompanyBgmTrack?.setEnabled(true);
       this.bgmType = BgmType.ACCOMPANY
     } else if (this.bgmType == BgmType.ACCOMPANY) {
-      this.accompanyBgmTrack?.pauseProcessAudioBuffer();
+      // this.accompanyBgmTrack?.pauseProcessAudioBuffer();
       // switch to original
-      if (this.isOriginalBgmStart) {
-        this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-        if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.originalBgmTrack?.resumeProcessAudioBuffer()
-        }
-      } else {
-        if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.originalBgmTrack?.startProcessAudioBuffer();
-          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-          this.originalBgmTrack?.play()
-        } else {
-          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-        }
-      }
+      this.originalBgmTrack?.setEnabled(false);
+        this.accompanyBgmTrack?.setEnabled(true);
       this.bgmType = BgmType.ORIGINAL
     }
     this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType })
@@ -521,34 +519,31 @@ export class Engine {
   }
 
   private _startBgmTimer() {
-    if (this._bgmTimerStart) {
-      return
-    }
-    this._bgmTimerStart = true
+    // if (this._bgmTimerStart) {
+    //   return
+    // }
+    // this._bgmTimerStart = true
 
-    const id = setInterval(() => {
-      this.currentTime = this.getBgmProgress()
-      this.emit("progressChanged", { time: this.currentTime })
-      this._dealLine()
-    }, PROGRESS_INTERVAL_TIME)
+    // const id = setInterval(() => {
+    //   this.currentTime = this.getBgmProgress()
+    //   this.emit("progressChanged", { time: this.currentTime })
+    //   this._dealLine()
+    // }, PROGRESS_INTERVAL_TIME)
 
-    this._intervalIds.push(id)
+    // this._intervalIds.push(id)
   }
 
   private _pauseBgm() {
-    if (this.bgmType === BgmType.ORIGINAL) {
-      this.originalBgmTrack?.pauseProcessAudioBuffer();
-    } else {
-      this.accompanyBgmTrack?.pauseProcessAudioBuffer();
-    }
+    this.originalBgmTrack?.setEnabled(false);
+    this.accompanyBgmTrack?.setEnabled(false);
   }
 
 
   private _resumeBgm() {
-    if (this.bgmType === BgmType.ORIGINAL) {
-      this.originalBgmTrack?.resumeProcessAudioBuffer()
-    } else {
-      this.accompanyBgmTrack?.resumeProcessAudioBuffer()
+    if(this.bgmType===BgmType.ORIGINAL){
+      this.originalBgmTrack?.setEnabled(true);
+    }else{
+      this.accompanyBgmTrack?.setEnabled(true);
     }
   }
 
