@@ -316,38 +316,43 @@ export class Engine {
     const mp3Data = res.data.mp3Data
     let accompanyFile
     let originalFile
-    // let tracks=[];
+    let tracks=[];
     if (mp3Data[0]) {
       // 伴奏
-      let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
-      accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
+      // let accompanyBlob = new Blob([mp3Data[0]], { type: 'audio/mpeg' });
+      // accompanyFile = new File([accompanyBlob], 'accompany.mp3', { type: accompanyBlob.type });
       // let track1 = await mediaStreamTrackFromMp3data(mp3Data[0]);
-      // let bufferSource = new AudioBufferSource(mp3Data[0]);
-      // let audioTrack = new BufferSourceAudioTrack()
+      let bufferSource = new AudioBufferSource(mp3Data[0]);
+      let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
+      tracks.push(audioTrack);
       // let rtrack1 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
       // tracks.push(rtrack1);
     }
     if (mp3Data[1]) {
       // 原唱
-      let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
-      originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
+      // let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
+      // originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
       // let track2 = await mediaStreamTrackFromMp3data(mp3Data[1]);
       // let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
       // tracks.push(rtrack2);
+      let bufferSource = new AudioBufferSource(mp3Data[1]);
+      let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
+      tracks.push(audioTrack);
     }
     logger.record("genBgmTracks generate mp3 file success")
-    let tasks = []
-    if (accompanyFile) {
-      tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: accompanyFile,
-      }))
-    }
-    if (originalFile) {
-      tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: originalFile,
-      }))
-    }
-    const tracks = await Promise.all(tasks)
+    // let tasks = []
+    // if (accompanyFile) {
+
+    //   tasks.push(AgoraRTC.createBufferSourceAudioTrack({
+    //     source: accompanyFile,
+    //   }))
+    // }
+    // if (originalFile) {
+    //   tasks.push(AgoraRTC.createBufferSourceAudioTrack({
+    //     source: originalFile,
+    //   }))
+    // }
+    // const tracks = await Promise.all(tasks)
     logger.record("genBgmTracks create buffer source audio track success")
     this.accompanyBgmTrack = tracks[0]
     this.originalBgmTrack = tracks[1]

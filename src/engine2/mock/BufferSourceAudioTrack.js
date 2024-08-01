@@ -6,13 +6,13 @@ export class BufferSourceAudioTrack extends LocalAudioTrack {
     return "BufferSourceAudioTrack";
   }
 
-  constructor(source, bufferSource, outputTrack, options) {
-    super(bufferSource.createOutputTrack(), outputTrack, options);
-    this.source = source;
+  constructor(source, bufferSource, encodeConfig, id) {
+    super(bufferSource.createOutputTrack(), encodeConfig, id);
+    // this.source = source;
     this._bufferSource = bufferSource;
 
-    this._bufferSource.on(Lf.AUDIO_SOURCE_STATE_CHANGE, (event) => {
-      this.emit(_S.SOURCE_STATE_CHANGE, event);
+    this._bufferSource.on("audio_source_state_change", (event) => {
+      this.emit("source-state-change", event);
     });
 
     try {
