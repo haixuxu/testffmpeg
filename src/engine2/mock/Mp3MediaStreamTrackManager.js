@@ -13,17 +13,9 @@ class Mp3MediaStreamTrackManager {
     if (this.caches[sourceKey]) {
       // 停止当前播放并释放资源
       const cache = this.caches[sourceKey];
-
-      cache.audioEl.pause();
-      URL.revokeObjectURL(cache.audioEl.src);
       cache.release();
-      cache.mediaSource = null;
-      cache.audioEl = null;
-      cache.audioEl = null;
-      cache.mediaElementSource = null;
-      cache.destination = null;
-      cache.release = null;
       delete this.caches[sourceKey];
+     
     }
 
     return new Promise((resolve, reject) => {
@@ -36,13 +28,17 @@ class Mp3MediaStreamTrackManager {
 
       this.caches[sourceKey] = {
         // mediaSource,
-        audioEl,
         release,
         // mediaElementSource,
         // destination,
       };
 
       function release() {
+        console.log('release====call');
+        audioEl.pause();
+        URL.revokeObjectURL(audioEl.src);
+        audioEl.src = ''; // 解除音频文件的引用
+        audioEl.load();   // 重新加载空的音频源
         mediaSource.removeEventListener("sourceopen",handleSourceOpen);
       }
 
