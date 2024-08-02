@@ -66,7 +66,7 @@ class Mp3MediaStreamTrackManager {
         sourceBuffer.appendBuffer(mp3Data);
         resolve({
           mediaTrack:destination.stream.getAudioTracks()[0],
-          status
+          status,
         });
       }
       mediaSource.addEventListener("sourceopen", handleSourceOpen);

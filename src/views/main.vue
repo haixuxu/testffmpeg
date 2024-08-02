@@ -36,7 +36,7 @@
         </LineScoreView>
       </section>
       <section>
-        <div>currentTime:{{ Number(currentTime).toFixed(3) }}</div>
+        <div>currentTime:{{ Number(currentTime).toFixed(3) }}/ {{Math.floor((currentTime/1000)/60)+':'+Math.floor((currentTime/1000))%60 }}</div>
         <div>currentLine: {{ currentLine }}</div>
         <div>realPitch: {{ realPitch }}</div>
         <div>currentLineScore: {{ currentLineScore }}</div>
