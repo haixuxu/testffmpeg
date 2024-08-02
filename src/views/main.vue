@@ -24,8 +24,8 @@
         </section>
       </section>
       <section>
-        <button @click="createAudioTrack" v-if="!localAudioTrack">createAudioTrack (麦克风)</button>
-        <button @click="stopProcessAudio" v-if="localAudioTrack">stopProcessAudio (停止获取麦克风pcm数据)</button>
+        <button @click="createAudioTrack" v-if="!enableMicro">createAudioTrack (麦克风)</button>
+        <button @click="stopProcessAudio" v-if="enableMicro">stopProcessAudio (停止获取麦克风pcm数据)</button>
       </section>
       <section v-if="lyric.content">
         <div>{{ lyric.ti }} --- {{ lyric.ar }}</div>
@@ -36,7 +36,7 @@
         </LineScoreView>
       </section>
       <section>
-        <div>currentTime:{{ currentTime }}</div>
+        <div>currentTime:{{ Number(currentTime).toFixed(3) }}</div>
         <div>currentLine: {{ currentLine }}</div>
         <div>realPitch: {{ realPitch }}</div>
         <div>currentLineScore: {{ currentLineScore }}</div>
@@ -84,6 +84,7 @@ export default {
       lyric: {}, // 歌词数据
       pitchData: null, // 音高数据
       realPitch: 0, // 实时音高
+      enableMicro:false,
       bgmStatus: engine.bgmStatus,
       bgmType: engine.bgmType
     };
@@ -154,7 +155,7 @@ export default {
       this.hasGenBgmTracks = true;
     },
     async createAudioTrack() {
-      
+      console.log('创建麦克风...')
       // 创建 mic 音轨
       this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
         AEC: true
@@ -164,9 +165,11 @@ export default {
       engine.setAudioTrack(this.localAudioTrack);
       // 开启音频处理 （实时pitch）
       engine.startProcessAudio()
+      this.enableMicro=true;
     },
     stopProcessAudio() {
       engine.stopProcessAudio()
+      this.enableMicro=false;
     },
     playBgm() {
       engine.playBgm(this.bgmType)

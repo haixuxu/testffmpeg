@@ -15,7 +15,6 @@ class Mp3MediaStreamTrackManager {
       const cache = this.caches[sourceKey];
       cache.release();
       delete this.caches[sourceKey];
-     
     }
 
     return new Promise((resolve, reject) => {
@@ -26,6 +25,19 @@ class Mp3MediaStreamTrackManager {
       const destination = this.audioContext.createMediaStreamDestination();
       mediaElementSource.connect(destination);
 
+      let status = {
+        currentTime:0,
+        duration:0,
+      }
+      // 定期更新播放时间信息
+      const updateTime = () => {
+        status.currentTime = audioEl.currentTime;
+        status.duration = audioEl.duration;
+        // console.log(`Current Time: ${audioEl.currentTime}`);
+        // console.log(`Duration: ${audioEl.duration}`);
+      };
+      audioEl.addEventListener("timeupdate", updateTime);
+
       this.caches[sourceKey] = {
         // mediaSource,
         release,
@@ -34,12 +46,13 @@ class Mp3MediaStreamTrackManager {
       };
 
       function release() {
-        console.log('release====call');
+        console.log("release====call");
         audioEl.pause();
         URL.revokeObjectURL(audioEl.src);
-        audioEl.src = ''; // 解除音频文件的引用
-        audioEl.load();   // 重新加载空的音频源
-        mediaSource.removeEventListener("sourceopen",handleSourceOpen);
+        audioEl.removeEventListener("timeupdate",updateTime);
+        audioEl.src = ""; // 解除音频文件的引用
+        audioEl.load(); // 重新加载空的音频源
+        mediaSource.removeEventListener("sourceopen", handleSourceOpen);
       }
 
       function handleSourceOpen() {
@@ -51,7 +64,10 @@ class Mp3MediaStreamTrackManager {
           }
         });
         sourceBuffer.appendBuffer(mp3Data);
-        resolve(destination.stream.getAudioTracks()[0]);
+        resolve({
+          mediaTrack:destination.stream.getAudioTracks()[0],
+          status
+        });
       }
       mediaSource.addEventListener("sourceopen", handleSourceOpen);
 

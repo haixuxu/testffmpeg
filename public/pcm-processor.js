@@ -28,6 +28,7 @@ class PCMProcessor extends AudioWorkletProcessor {
     if (input[0]) {
       this.audioData.push(...input[0])
       if (this.audioData.length > MAX_NUM) {
+        // console.log('post message ===',this.audioData);
         this.port.postMessage({
           pcm: float32Array2Int16Array(this.audioData)
         })

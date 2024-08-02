@@ -490,7 +490,6 @@ export class Engine {
     this.originalBgmTrack?.seekAudioBuffer(time / 1000);
     logger.debug("seekBgmProgress success", this.currentTime);
   }
-
   getBgmProgress() {
     let time = 0;
     if (this.isIdle) {
@@ -501,6 +500,7 @@ export class Engine {
     } else if (this.bgmType == BgmType.ACCOMPANY) {
       time = this?.accompanyBgmTrack?.getCurrentTime() || 0;
     }
+    console.log('time===',time);
     return time * 1000;
   }
 

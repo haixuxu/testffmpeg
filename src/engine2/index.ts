@@ -281,22 +281,24 @@ export class Engine {
   }
 
   async startProcessAudio() {
+    console.log("startProcessAudio====")
     if(!this.audioContext){
         this.audioContext = new AudioContext();
     }
     if (!this.audioTrack) {
       throw new Error("audioTrack is not defined")
     }
-    await this.audioContext.audioWorklet.addModule("pcm-processor.js")
+    console.log('-----load audioWorklet....');
+    await this.audioContext.audioWorklet.addModule("https://y-dev.tuwan.com/pcm-processor.js")
     const audioWorkletNode = new AudioWorkletNode(this.audioContext, "pcm-processor")
     console.log('123213213');
     audioWorkletNode.port.onmessage=function(event){
-      console.log('Received message from PCMProcessor:', event.data);
+      console.log('1111  Received message from PCMProcessor:', event.data);
     }
     const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack()
     this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(new MediaStream([audioMediaStreamTrack]))
     this.mediaStreamAudioSourceNode.connect(audioWorkletNode)
-
+    console.log('audioWorkletNode====onmessage=====')
     audioWorkletNode.port.onmessage = (event) => {
       const pcm = event.data?.pcm
       if (pcm) {
@@ -344,7 +346,8 @@ export class Engine {
       let track1 = await manager.createMediaStreamTrackFromMp3(mp3Data[0],"accompany");
       // let bufferSource = new AudioBufferSource(mp3Data[0]);
       // let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
-      let audioTrack = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
+      let audioTrack = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1.mediaTrack});
+      audioTrack.status = track1.status;
       tracks.push(audioTrack);
       // let rtrack1 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track1});
       // tracks.push(rtrack1);
@@ -354,7 +357,8 @@ export class Engine {
       // let originalBlob = new Blob([mp3Data[1]], { type: 'audio/mpeg' });
       // originalFile = new File([originalBlob], 'original.mp3', { type: originalBlob.type });
       let track2 = await manager.createMediaStreamTrackFromMp3(mp3Data[1],"original");
-      let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
+      let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2.mediaTrack});
+      rtrack2.status = track2.status;
       tracks.push(rtrack2);
       // let bufferSource = new AudioBufferSource(mp3Data[1]);
       // let audioTrack = new BufferSourceAudioTrack("",bufferSource,{});
@@ -453,10 +457,11 @@ export class Engine {
     if (this.isIdle) {
       return time
     }
+    // debugger;
     if (this.bgmType === BgmType.ORIGINAL) {
-      time = this?.originalBgmTrack?.getCurrentTime() || 0
+      time = this?.originalBgmTrack?.status.currentTime || 0
     } else if (this.bgmType == BgmType.ACCOMPANY) {
-      time = this?.accompanyBgmTrack?.getCurrentTime() || 0
+      time = this?.accompanyBgmTrack?.status.currentTime || 0
     }
     return time * 1000
   }
@@ -479,9 +484,11 @@ export class Engine {
 
   // ----------------- private -----------------
   private async _dealLine() {
+   
     if (!this.lyric?.content) {
       return
     }
+    // console.log('_dealLine....');
     let len = this.lyric.content.length;
     for (let i = 0; i < len; i++) {
       const lineData = this.lyric.content[i];
@@ -508,29 +515,32 @@ export class Engine {
   }
 
   private async _dealAudioPcm(pcm: Float32Array) {
+    console.log('handle deal audio pcm===111');
     if (this.bgmStatus !== BgmStatus.PLAYING) {
       return
     }
+    console.log('handle deal audio pcm===22');
     //调用process后会计算音高评分
     this.yinsudaClient.processScore({ buffer: pcm, pts: this.currentTime });
     var levelInfo = await this.yinsudaClient.getRealTimePitch();
     const realPitch = levelInfo?.data?.pitch || 0
+    console.log('realPitch====',realPitch);
     this.emit("pitchChanged", { realPitch: realPitch, time: this.currentTime })
   }
 
   private _startBgmTimer() {
-    // if (this._bgmTimerStart) {
-    //   return
-    // }
-    // this._bgmTimerStart = true
+    if (this._bgmTimerStart) {
+      return
+    }
+    this._bgmTimerStart = true
 
-    // const id = setInterval(() => {
-    //   this.currentTime = this.getBgmProgress()
-    //   this.emit("progressChanged", { time: this.currentTime })
-    //   this._dealLine()
-    // }, PROGRESS_INTERVAL_TIME)
+    const id = setInterval(() => {
+      this.currentTime = this.getBgmProgress()
+      this.emit("progressChanged", { time: this.currentTime })
+      this._dealLine()
+    }, PROGRESS_INTERVAL_TIME)
 
-    // this._intervalIds.push(id)
+    this._intervalIds.push(id)
   }
 
   private _pauseBgm() {
