@@ -2,17 +2,10 @@
   <div>
     <section>
       <button @click="triggerStart">切歌</button>
-
-      <button @click="setUser" v-if="!hasUserSet">setUser (need first)</button>
     </section>
     <div v-if="hasUserSet">
+
       <section>
-        <button @click="getLyric" v-if="!lyric.content">getLyric</button>
-        <button @click="getPitchData" v-if="!pitchData">getPitchData</button>
-        <button @click="prepare" v-if="lyric.content && pitchData">prepare</button>
-      </section>
-      <section>
-        <button @click="genBgmTracks" v-if="!hasGenBgmTracks">生成 原唱/伴唱 tracks</button>
         <section v-if="hasGenBgmTracks">
           <div>
             <div>当前音轨： {{ bgmType === 1 ? "原唱" : "伴奏" }}</div>
@@ -36,7 +29,8 @@
         </LineScoreView>
       </section>
       <section>
-        <div>currentTime:{{ Number(currentTime).toFixed(3) }}/ {{Math.floor((currentTime/1000)/60)+':'+Math.floor((currentTime/1000))%60 }}</div>
+        <div>currentTime:{{ Number(currentTime).toFixed(3) }}/
+          {{ Math.floor((currentTime / 1000) / 60) + ':' + Math.floor((currentTime / 1000)) % 60 }}</div>
         <div>currentLine: {{ currentLine }}</div>
         <div>realPitch: {{ realPitch }}</div>
         <div>currentLineScore: {{ currentLineScore }}</div>
@@ -63,8 +57,8 @@ window.engine = engine;
 engine.setLogLevel(0)
 let MOCK_SONG_ID = "";
 
-let index= 0;
-let songList = ["32062130","40289835","630965613","28193209","226872391"]
+let index = 0;
+let songList = ["32062130", "40289835", "630965613", "28193209", "226872391"]
 
 export default {
   components: {
@@ -84,7 +78,7 @@ export default {
       lyric: {}, // 歌词数据
       pitchData: null, // 音高数据
       realPitch: 0, // 实时音高
-      enableMicro:false,
+      enableMicro: false,
       bgmStatus: engine.bgmStatus,
       bgmType: engine.bgmType
     };
@@ -107,26 +101,11 @@ export default {
 
   },
   methods: {
-    async startFn () {
-      await this.setUser();
-      // 这里模拟连续的快速切换歌曲 在谷歌32位浏览器上可以复现崩溃 或者看浏览器的任务管理器，可以看到内存一直在增加，可以涨到好几G
-      for (let i = 0; i < 30; i++) {
-        setTimeout(async () => {
-          engine.destory();
-          // engine = null;
-          // engine = new Engine()
-          await this.getLyric();
-          await this.getPitchData();
-          await this.genBgmTracks();
-          this.playBgm();
-        }, i * 5 * 1000);
-      }
-    },
     // 切歌
-    async triggerStart () {
+    async triggerStart() {
       engine.reset();
-      index ++;
-      MOCK_SONG_ID =songList[index%5];
+      index++;
+      MOCK_SONG_ID = songList[index % 5];
       console.log('triggerStart====----')
       await this.setUser();
       await this.getLyric();
@@ -155,7 +134,7 @@ export default {
       this.hasGenBgmTracks = true;
     },
     async createAudioTrack() {
-      console.log('创建麦克风...')
+      console.log('创建麦克风...');
       // 创建 mic 音轨
       this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
         AEC: true
@@ -165,11 +144,11 @@ export default {
       engine.setAudioTrack(this.localAudioTrack);
       // 开启音频处理 （实时pitch）
       engine.startProcessAudio()
-      this.enableMicro=true;
+      this.enableMicro = true;
     },
     stopProcessAudio() {
       engine.stopProcessAudio()
-      this.enableMicro=false;
+      this.enableMicro = false;
     },
     playBgm() {
       engine.playBgm(this.bgmType)
