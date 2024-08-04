@@ -32,6 +32,8 @@ class MeidaTrackBox extends EventEmitter {
         audioEl.src = ""; // 解除音频文件的引用
         audioEl.load(); // 重新加载空的音频源
         this.audioEl = null;
+        this.context = null;
+        this.mediaSource = null;
     }
     pause() {
         this.audioEl.pause();
