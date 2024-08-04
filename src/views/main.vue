@@ -13,6 +13,8 @@
             <button @click="toggleBgmTrack">切换音轨</button>
             <button @click="toggleBgmStatus">切换播放状态 {{ bgmStatus == 3 ? "playing" : "pause" }}</button>
             <button @click="seekBgmProgress">seek bgm progress 切换进度</button>
+            <button @click="volumeDown">音量-</button>
+            <button @click="volumeUp">音量+</button>
           </div>
         </section>
       </section>
@@ -79,6 +81,7 @@ export default {
       pitchData: null, // 音高数据
       realPitch: 0, // 实时音高
       enableMicro: false,
+      volume:100,
       bgmStatus: engine.bgmStatus,
       bgmType: engine.bgmType
     };
@@ -160,11 +163,19 @@ export default {
       engine.toggleBgmStatus()
     },
     seekBgmProgress() {
-      const MOCK_TIME = 175070 // ms
+      const MOCK_TIME = 105070 // ms
       engine.seekBgmProgress(MOCK_TIME)
     },
     setBgmVolume(volume) {
       engine.setBgmVolume(volume)
+    },
+    volumeDown(){
+      this.volume-=10;
+      engine.setBgmVolume(this.volume)
+    },
+    volumeUp(){
+      this.volume+=10;
+      engine.setBgmVolume(this.volume)
     },
     listenEngineEvents() {
       engine.on("lineChanged", (data) => {

@@ -4,6 +4,13 @@ export enum LogLevel {
   ERROR = 2,
 }
 
+declare global {
+  interface Window {
+      yinsudaClient: any;
+  }
+}
+
+
 export interface LoggerConfig {
   level?: LogLevel
   prefix?: string

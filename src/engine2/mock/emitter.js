@@ -60,7 +60,7 @@ export class EventEmitter {
       if (!this._events[event]) {
         this._events[event] = [];
       }
-      const listeners = this._events[event].map((entry) => entry);
+      const listeners = this._events[event];
       for (const entry of listeners) {
         if (entry.once) {
           this.off(event, entry.listener);
