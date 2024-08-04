@@ -1,18 +1,25 @@
-import { resolveToken } from "./request"
-import { logger } from "./logger"
-import { LogLevel, EngineConfig, LyricModel, EngineEvents, BgmStatus, BgmType } from "./types"
+import { resolveToken } from "./request";
+import { logger } from "./logger";
+import {
+  LogLevel,
+  EngineConfig,
+  LyricModel,
+  EngineEvents,
+  BgmStatus,
+  BgmType,
+} from "./types";
 import mitt, { Emitter, Handler } from "mitt";
-import { parseKrcString } from "./utils"
-import "./yisudaSdk/index.umd.js"
+import { parseKrcString } from "./utils";
+import "./yisudaSdk/index.umd.js";
 import { downloadSongById } from "./mockapi";
-import { BufferSourceAudioTrack } from "./mock/BufferSourceAudioTrack";
+// import { BufferSourceAudioTrack } from "./mock/BufferSourceAudioTrack";
 
-import { AudioBufferSource } from "./mock/AudioBufferSource";
+// import { AudioBufferSource } from "./mock/AudioBufferSource";
+import { decodeMP3 } from "./mock/decoder";
 
-window.AudioBufferSourceCustom = AudioBufferSource;
+// window.AudioBufferSourceCustom = AudioBufferSource;
 
-export * from "./types"
-
+export * from "./types";
 
 // async function mediaStreamTrackFromMp3data(mp3Data:Uint8Array){
 //   const audioContext  = new AudioContext();
@@ -33,151 +40,154 @@ declare global {
   }
 }
 
-
-const PID =  import.meta.env.VITE_APP_ID
-const APP_KEY = import.meta.env.VITE_APP_KEY
-const SCORE_HARD_LEVEL = 5
+const PID = import.meta.env.VITE_APP_ID;
+const APP_KEY = import.meta.env.VITE_APP_KEY;
+const SCORE_HARD_LEVEL = 5;
 const PROGRESS_INTERVAL_TIME = 20;
 // @ts-ignore
-const AgoraRTC = window.AgoraRTC
+const AgoraRTC = window.AgoraRTC;
 
 export class Engine {
-  pid: string = PID
-  pKey: string = APP_KEY
-  userId: string = ""   // yinsuda uid
-  token: string = ""
+  pid: string = PID;
+  pKey: string = APP_KEY;
+  userId: string = ""; // yinsuda uid
+  token: string = "";
   currentTime: number = 0; // 当前时间戳  ms
   currentLine: number = 0; // 当前行数
   lyric: LyricModel = {} as LyricModel; // 歌词数据
-  config: EngineConfig
-  audioTrack?: any // 音频轨道
-//   audioContext: AudioContext = new AudioContext() // 音频上下文
-  audioContext?:any// 音频上下文
-  originalBgmTrack?: any // 原唱轨道
-  accompanyBgmTrack?: any // 伴奏轨道
-  mediaStreamAudioSourceNode?: MediaStreamAudioSourceNode
-  bgmStatus = BgmStatus.IDLE
-  bgmType = BgmType.ORIGINAL
+  config: EngineConfig;
+  audioTrack?: any; // 音频轨道
+  //   audioContext: AudioContext = new AudioContext() // 音频上下文
+  audioContext?: any; // 音频上下文
+  originalBgmTrack?: any; // 原唱轨道
+  accompanyBgmTrack?: any; // 伴奏轨道
+  mediaStreamAudioSourceNode?: MediaStreamAudioSourceNode;
+  bgmStatus = BgmStatus.IDLE;
+  bgmType = BgmType.ORIGINAL;
   // ----------- private ------------
-  private _emitter: Emitter<EngineEvents> = mitt()
-  private _intervalIds: any[] = []
-  private _bgmTimerStart = false
-
+  private _emitter: Emitter<EngineEvents> = mitt();
+  private _intervalIds: any[] = [];
+  private _bgmTimerStart = false;
+  result1: any;
+  result2: any;
 
   get isIdle() {
-    return this.bgmStatus === BgmStatus.IDLE
+    return this.bgmStatus === BgmStatus.IDLE;
   }
 
   get isOriginalBgmStart() {
-    return this?.originalBgmTrack?.getCurrentTime() > 0
+    return this?.originalBgmTrack?.getCurrentTime() > 0;
   }
 
   get isAccompanyBgmStart() {
-    return this?.accompanyBgmTrack?.getCurrentTime() > 0
+    return this?.accompanyBgmTrack?.getCurrentTime() > 0;
   }
 
   get totalLine() {
-    return this.lyric?.content?.length || 0
+    return this.lyric?.content?.length || 0;
   }
 
   get bgmDuration() {
-    return this.originalBgmTrack?.duration * 1000 || 0
+    return this.originalBgmTrack?.duration * 1000 || 0;
   }
 
-
   constructor(config: EngineConfig) {
-    this.config = config
+    this.config = config;
   }
 
   get rtcClient() {
-    return this.config.rtcClient
+    return this.config.rtcClient;
   }
 
   get yinsudaClient() {
     if (!window.yinsudaClient) {
-      throw new Error("yinsudaClient is not defined")
+      throw new Error("yinsudaClient is not defined");
     }
     return window.yinsudaClient;
   }
 
   setLogLevel(level: LogLevel) {
-    logger.setLogLevel(level)
+    logger.setLogLevel(level);
   }
 
   async setUser(uid: string) {
     // debugger;
-    const tokenInfo = await resolveToken(uid)
+    const tokenInfo = await resolveToken(uid);
     const { yinsuda_uid, token } = tokenInfo;
-    this.userId = yinsuda_uid
-    this.token = token
+    this.userId = yinsuda_uid;
+    this.token = token;
     await this.yinsudaClient.setUser({
       userid: this.userId,
       token: this.token,
       clientPid: this.pid,
       appkey: this.pKey,
-      isVip: 0
+      isVip: 0,
     });
-    logger.debug("setUser success")
+    logger.debug("setUser success");
   }
 
   async getLyric(songId: string, isAccompany?: boolean) {
     try {
       const config: any = {
-        song_id: songId
-      }
+        song_id: songId,
+      };
       if (isAccompany) {
-        config.isAccompany = 1
+        config.isAccompany = 1;
       }
-      const { data, status } = await this.yinsudaClient.getLyric({ song_id: songId });
+      const { data, status } = await this.yinsudaClient.getLyric({
+        song_id: songId,
+      });
       if (status !== 0) {
-        const errMsg = "getLyric error"
-        logger.error(errMsg)
-        throw new Error(errMsg)
+        const errMsg = "getLyric error";
+        logger.error(errMsg);
+        throw new Error(errMsg);
       }
       if (data.lyric) {
-        this.lyric = parseKrcString(data.lyric)
+        this.lyric = parseKrcString(data.lyric);
       }
-      logger.debug("getLyric success", this.lyric)
-      return this.lyric
+      logger.debug("getLyric success", this.lyric);
+      return this.lyric;
     } catch (err) {
-      logger.error("getLyric error", err)
-      throw err
+      logger.error("getLyric error", err);
+      throw err;
     }
   }
 
   async getPitchData(songId: string) {
     try {
-      const { status, data } = await this.yinsudaClient.getPitchData({ song_id: songId });
+      const { status, data } = await this.yinsudaClient.getPitchData({
+        song_id: songId,
+      });
       if (status !== 0) {
-        logger.error("getPitchData error", status)
-        throw new Error("getPitchData error")
+        logger.error("getPitchData error", status);
+        throw new Error("getPitchData error");
       }
-      logger.debug("getPitchData success", data?.pitch)
-      return data?.pitch
+      logger.debug("getPitchData success", data?.pitch);
+      return data?.pitch;
     } catch (err) {
-      logger.error("getPitchData error", err)
-      throw err
+      logger.error("getPitchData error", err);
+      throw err;
     }
   }
 
   prepare() {
     this.yinsudaClient.setAudioParams({ sampleRate: 48000, channels: 1 });
     this.yinsudaClient.setScoreHardLevel({ level: SCORE_HARD_LEVEL });
-    logger.debug("prepare success")
+    logger.debug("prepare success");
   }
 
   async getRealTimePitch() {
     try {
       const { status, data } = await this.yinsudaClient.getRealTimePitch();
       if (status !== 0) {
-        logger.error("getRealTimePitch error", status)
-        throw new Error("getRealTimePitch error")
+        logger.error("getRealTimePitch error", status);
+        throw new Error("getRealTimePitch error");
       }
-      logger.debug("getRealTimePitch success", data)
-      return data
+      logger.debug("getRealTimePitch success", data);
+      return data;
     } catch (err) {
-      logger.error("getRealTimePitch error", err)
-      throw err
+      logger.error("getRealTimePitch error", err);
+      throw err;
     }
   }
 
@@ -185,29 +195,31 @@ export class Engine {
     try {
       const { status, data } = await this.yinsudaClient.getScore({ pts });
       if (status !== 0) {
-        logger.error("getScore error", status)
-        throw new Error("getScore error")
+        logger.error("getScore error", status);
+        throw new Error("getScore error");
       }
-      logger.debug("getScore success", data)
-      return data
+      logger.debug("getScore success", data);
+      return data;
     } catch (err) {
-      logger.error("getScore error", err)
-      throw err
+      logger.error("getScore error", err);
+      throw err;
     }
   }
 
   async getAverageScore(pts: number = 0) {
     try {
-      const { status, data } = await this.yinsudaClient.getAverageScore({ pts });
+      const { status, data } = await this.yinsudaClient.getAverageScore({
+        pts,
+      });
       if (status !== 0) {
-        logger.error("getAverageScore error", status)
-        throw new Error("getAverageScore error")
+        logger.error("getAverageScore error", status);
+        throw new Error("getAverageScore error");
       }
-      logger.debug("getAverageScore success", data)
-      return data
+      logger.debug("getAverageScore success", data);
+      return data;
     } catch (err) {
-      logger.error("getAverageScore error", err)
-      throw err
+      logger.error("getAverageScore error", err);
+      throw err;
     }
   }
 
@@ -215,78 +227,92 @@ export class Engine {
     try {
       const { status, data } = await this.yinsudaClient.getTotalScore({ pts });
       if (status !== 0) {
-        logger.error("getTotalScore error", status)
-        throw new Error("getTotalScore error")
+        logger.error("getTotalScore error", status);
+        throw new Error("getTotalScore error");
       }
-      logger.debug("getTotalScore success", data)
-      return data
+      logger.debug("getTotalScore success", data);
+      return data;
     } catch (err) {
-      logger.error("getTotalScore error", err)
-      throw err
+      logger.error("getTotalScore error", err);
+      throw err;
     }
   }
 
   async reset() {
-    this.accompanyBgmTrack?.stopProcessAudioBuffer()
-    this.accompanyBgmTrack?.close()
-    this.accompanyBgmTrack?._bufferSource.close();
-    this.accompanyBgmTrack = undefined
-    this.originalBgmTrack?.stopProcessAudioBuffer()
-    this.originalBgmTrack?.close()
-    this.originalBgmTrack?._bufferSource.close();
-    this.originalBgmTrack = undefined
-    this.bgmStatus = BgmStatus.IDLE
-    this.lyric = {} as LyricModel
-    this.currentTime = 0
-    this.currentLine = 0
-    this._bgmTimerStart = false
-    this._intervalIds.forEach(id => clearInterval(id))
-    this._intervalIds = []
-    this.stopProcessAudio()
-    this.mediaStreamAudioSourceNode = undefined
-    logger.debug("reset success")
+    // this.result1?.release();
+    // this.result2?.release();
+    // this.result1 = null;
+    // this.result2 = null;
+    this.accompanyBgmTrack?.stopProcessAudioBuffer();
+    this.accompanyBgmTrack?.close();
+    if(this.accompanyBgmTrack){
+        this.accompanyBgmTrack.source=null;
+    }
+    this.accompanyBgmTrack = undefined;
+    this.originalBgmTrack?.stopProcessAudioBuffer();
+    this.originalBgmTrack?.close();
+    if(this.originalBgmTrack){
+        this.originalBgmTrack.source=null;
+    }
+    this.originalBgmTrack = undefined;
+
+    this.bgmStatus = BgmStatus.IDLE;
+    this.lyric = {} as LyricModel;
+    this.currentTime = 0;
+    this.currentLine = 0;
+    this._bgmTimerStart = false;
+    this._intervalIds.forEach((id) => clearInterval(id));
+    this._intervalIds = [];
+    this.stopProcessAudio();
+    this.mediaStreamAudioSourceNode = undefined;
+    logger.debug("reset success");
   }
 
   destory() {
-    this.reset()
-    this.audioContext?.close()
-    this._emitter.all.clear()
-    this.audioTrack?.close()
-    this.audioTrack = undefined
-    logger.debug("destory success")
+    this.reset();
+    this.audioContext?.close();
+    this._emitter.all.clear();
+    this.audioTrack?.close();
+    this.audioTrack = undefined;
+    logger.debug("destory success");
   }
 
   // ----------------- rtc -----------------
   setAudioTrack(audioTrack: any) {
-    this.audioTrack = audioTrack
-    logger.debug("setAudioTrack success")
+    this.audioTrack = audioTrack;
+    logger.debug("setAudioTrack success");
   }
 
   async startProcessAudio() {
-    if(!this.audioContext){
-        this.audioContext = new AudioContext();
+    if (!this.audioContext) {
+      this.audioContext = new AudioContext();
     }
     if (!this.audioTrack) {
-      throw new Error("audioTrack is not defined")
+      throw new Error("audioTrack is not defined");
     }
-    await this.audioContext.audioWorklet.addModule("pcm-processor.js")
-    const audioWorkletNode = new AudioWorkletNode(this.audioContext, "pcm-processor")
-    console.log('123213213');
-    audioWorkletNode.port.onmessage=function(event){
-      console.log('Received message from PCMProcessor:', event.data);
-    }
-    const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack()
-    this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(new MediaStream([audioMediaStreamTrack]))
-    this.mediaStreamAudioSourceNode.connect(audioWorkletNode)
+    await this.audioContext.audioWorklet.addModule("pcm-processor.js");
+    const audioWorkletNode = new AudioWorkletNode(
+      this.audioContext,
+      "pcm-processor"
+    );
+    console.log("123213213");
+    audioWorkletNode.port.onmessage = function (event) {
+      console.log("Received message from PCMProcessor:", event.data);
+    };
+    const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack();
+    this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(
+      new MediaStream([audioMediaStreamTrack])
+    );
+    this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
 
     audioWorkletNode.port.onmessage = (event) => {
-      const pcm = event.data?.pcm
+      const pcm = event.data?.pcm;
       if (pcm) {
-        this._dealAudioPcm(pcm)
+        this._dealAudioPcm(pcm);
       }
-    }
+    };
 
-    logger.debug("startProcessAudio success")
+    logger.debug("startProcessAudio success");
   }
 
   stopProcessAudio() {
@@ -294,30 +320,33 @@ export class Engine {
       return;
       // throw new Error("audioTrack is not defined")
     }
-    this.mediaStreamAudioSourceNode?.disconnect()
-    logger.debug("stopProcessAudio success")
+    this.mediaStreamAudioSourceNode?.disconnect();
+    logger.debug("stopProcessAudio success");
   }
 
   // ----------------- bgm -----------------
   async genBgmTracks(songId: string, isAccompany?: boolean) {
-    logger.record("genBgmTracks start")
-    await this.yinsudaClient.initCodec('.');
-    logger.record("genBgmTracks initCodec success")
+    if (!this.audioContext) {
+        this.audioContext = new AudioContext();
+      }
+    logger.record("genBgmTracks start");
+    await this.yinsudaClient.initCodec(".");
+    logger.record("genBgmTracks initCodec success");
     const config: any = {
-      song_id: songId
-    }
+      song_id: songId,
+    };
     if (isAccompany) {
-      config.isAccompany = 1
+      config.isAccompany = 1;
     }
 
     // 使用mock的api
-   const res = await downloadSongById(config);
+    const res = await downloadSongById(config);
     // const res = await this.yinsudaClient.downloadSongById(config);
-    
-    logger.record("genBgmTracks download song success")
-    const mp3Data = res.data.mp3Data
-    let accompanyFile
-    let originalFile
+
+    logger.record("genBgmTracks download song success");
+    const mp3Data = res.data.mp3Data;
+    let accompanyFile;
+    let originalFile;
     // let tracks=[];
     if (mp3Data[0]) {
       // 伴奏
@@ -337,37 +366,47 @@ export class Engine {
       // let rtrack2 = await AgoraRTC.createCustomAudioTrack({mediaStreamTrack:track2});
       // tracks.push(rtrack2);
     }
-    logger.record("genBgmTracks generate mp3 file success")
-    let tasks = []
+    logger.record("genBgmTracks generate mp3 file success");
+    let tasks = [];
     if (true) {
-      tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: mp3Data[0],
-      }))
+      const result = await decodeMP3(mp3Data[0], this.audioContext);
+      tasks.push(AgoraRTC.createBufferSourceAudioTrack({source:result}));
+    //   this.result1 = result;
     }
     if (true) {
-      tasks.push(AgoraRTC.createBufferSourceAudioTrack({
-        source: mp3Data[1],
-      }))
+      const result = await decodeMP3(mp3Data[1],this.audioContext);
+      tasks.push(AgoraRTC.createBufferSourceAudioTrack({source:result}));
+    //   this.result2 = result;
     }
-    const tracks = await Promise.all(tasks)
-    console.log("tracks===",tracks);
-    logger.record("genBgmTracks create buffer source audio track success")
-    this.accompanyBgmTrack = tracks[0]
-    this.originalBgmTrack = tracks[1]
-    this.accompanyBgmTrack?.on("source-state-change", this._handleSourceStateChange.bind(this))
-    this.originalBgmTrack?.on("source-state-change", this._handleSourceStateChange.bind(this))
-    logger.debug("genBgmTracks success", this.accompanyBgmTrack, this.originalBgmTrack)
-    logger.recordEnd()
+    const tracks = await Promise.all(tasks);
+    console.log("tracks===", tracks);
+    logger.record("genBgmTracks create buffer source audio track success");
+    this.accompanyBgmTrack = tracks[0];
+    this.originalBgmTrack = tracks[1];
+    this.accompanyBgmTrack?.on(
+      "source-state-change",
+      this._handleSourceStateChange.bind(this)
+    );
+    this.originalBgmTrack?.on(
+      "source-state-change",
+      this._handleSourceStateChange.bind(this)
+    );
+    logger.debug(
+      "genBgmTracks success",
+      this.accompanyBgmTrack,
+      this.originalBgmTrack
+    );
+    logger.recordEnd();
   }
 
   playBgm(bgmType: BgmType) {
     this.originalBgmTrack?.startProcessAudioBuffer();
-    this.originalBgmTrack?.play()
-    this.bgmStatus = BgmStatus.PLAYING
-    this.bgmType = bgmType
-    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType })
-    this._startBgmTimer()
-    logger.debug("playBgm success")
+    this.originalBgmTrack?.play();
+    this.bgmStatus = BgmStatus.PLAYING;
+    this.bgmType = bgmType;
+    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType });
+    this._startBgmTimer();
+    logger.debug("playBgm success");
   }
 
   toggleBgmTrack() {
@@ -375,61 +414,61 @@ export class Engine {
       this.originalBgmTrack?.pauseProcessAudioBuffer();
       // switch to accompany
       if (this.isAccompanyBgmStart) {
-        this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
+        this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
         if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.accompanyBgmTrack?.resumeProcessAudioBuffer()
+          this.accompanyBgmTrack?.resumeProcessAudioBuffer();
         }
       } else {
         if (this.bgmStatus == BgmStatus.PLAYING) {
           this.accompanyBgmTrack?.startProcessAudioBuffer();
-          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-          this.accompanyBgmTrack?.play()
+          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
+          this.accompanyBgmTrack?.play();
         } else {
-          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
+          this.accompanyBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
         }
       }
-      this.bgmType = BgmType.ACCOMPANY
+      this.bgmType = BgmType.ACCOMPANY;
     } else if (this.bgmType == BgmType.ACCOMPANY) {
       this.accompanyBgmTrack?.pauseProcessAudioBuffer();
       // switch to original
       if (this.isOriginalBgmStart) {
-        this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
+        this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
         if (this.bgmStatus == BgmStatus.PLAYING) {
-          this.originalBgmTrack?.resumeProcessAudioBuffer()
+          this.originalBgmTrack?.resumeProcessAudioBuffer();
         }
       } else {
         if (this.bgmStatus == BgmStatus.PLAYING) {
           this.originalBgmTrack?.startProcessAudioBuffer();
-          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
-          this.originalBgmTrack?.play()
+          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
+          this.originalBgmTrack?.play();
         } else {
-          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000)
+          this.originalBgmTrack?.seekAudioBuffer(this.currentTime / 1000);
         }
       }
-      this.bgmType = BgmType.ORIGINAL
+      this.bgmType = BgmType.ORIGINAL;
     }
-    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType })
-    logger.debug("toggleBgmTrack success")
+    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType });
+    logger.debug("toggleBgmTrack success");
   }
 
   toggleBgmStatus() {
     if (this.bgmStatus === BgmStatus.PLAYING) {
-      this._pauseBgm()
-      this.bgmStatus = BgmStatus.PAUSE
+      this._pauseBgm();
+      this.bgmStatus = BgmStatus.PAUSE;
     } else if (this.bgmStatus == BgmStatus.PAUSE) {
-      this._resumeBgm()
-      this.bgmStatus = BgmStatus.PLAYING
+      this._resumeBgm();
+      this.bgmStatus = BgmStatus.PLAYING;
     }
-    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType })
-    logger.debug("toggleBgmStatus success")
+    this.emit("statusChanged", { status: this.bgmStatus, type: this.bgmType });
+    logger.debug("toggleBgmStatus success");
   }
 
   setBgmVolume(volume: number) {
     if (volume < 0 || volume > 100) {
-      return
+      return;
     }
     if (this.isIdle) {
-      return
+      return;
     }
     this.accompanyBgmTrack?.setVolume(volume);
     this.originalBgmTrack?.setVolume(volume);
@@ -437,42 +476,48 @@ export class Engine {
 
   seekBgmProgress(time: number) {
     if (time < 0) {
-      return
+      return;
     }
     if (this.isIdle) {
-      return
+      return;
     }
-    this.currentTime = time 
+    this.currentTime = time;
     this.accompanyBgmTrack?.seekAudioBuffer(time / 1000);
     this.originalBgmTrack?.seekAudioBuffer(time / 1000);
-    logger.debug("seekBgmProgress success", this.currentTime)
+    logger.debug("seekBgmProgress success", this.currentTime);
   }
 
   getBgmProgress() {
-    let time = 0
+    let time = 0;
     if (this.isIdle) {
-      return time
+      return time;
     }
     if (this.bgmType === BgmType.ORIGINAL) {
-      time = this?.originalBgmTrack?.getCurrentTime() || 0
+      time = this?.originalBgmTrack?.getCurrentTime() || 0;
     } else if (this.bgmType == BgmType.ACCOMPANY) {
-      time = this?.accompanyBgmTrack?.getCurrentTime() || 0
+      time = this?.accompanyBgmTrack?.getCurrentTime() || 0;
     }
-    return time * 1000
+    return time * 1000;
   }
 
   // ----------------- event -----------------
-  on<Key extends keyof EngineEvents>(name: Key, fn: Handler<EngineEvents[Key]>) {
+  on<Key extends keyof EngineEvents>(
+    name: Key,
+    fn: Handler<EngineEvents[Key]>
+  ) {
     this._emitter.on<typeof name>(name, fn);
   }
 
-  off<Key extends keyof EngineEvents>(name: Key, fn?: Handler<EngineEvents[Key]>) {
+  off<Key extends keyof EngineEvents>(
+    name: Key,
+    fn?: Handler<EngineEvents[Key]>
+  ) {
     this._emitter.off<typeof name>(name, fn);
   }
 
   emit<Key extends keyof EngineEvents>(name: Key, data: EngineEvents[Key]) {
     if (name !== "progressChanged" && name !== "pitchChanged") {
-      logger.debug("event emit: ", name, data)
+      logger.debug("event emit: ", name, data);
     }
     this._emitter.emit<typeof name>(name, data);
   }
@@ -480,7 +525,7 @@ export class Engine {
   // ----------------- private -----------------
   private async _dealLine() {
     if (!this.lyric?.content) {
-      return
+      return;
     }
     let len = this.lyric.content.length;
     for (let i = 0; i < len; i++) {
@@ -488,20 +533,24 @@ export class Engine {
       const { lastToneEndTime } = lineData;
       if (this.currentTime >= lastToneEndTime) {
         if (i > this.currentLine) {
-          // line change 
-          this.currentLine = i
+          // line change
+          this.currentLine = i;
           const [lineScoreInfo, totalScoreInfo] = await Promise.all([
             this.yinsudaClient.getScore({ pts: this.currentTime }),
-            this.yinsudaClient.getTotalScore({ pts: this.currentTime })
-          ])
-          const { index = 0, score = 0 } = lineScoreInfo?.data || {}
-          const { totalScore = 0 } = totalScoreInfo?.data || {}
-          let lineScore = 0
+            this.yinsudaClient.getTotalScore({ pts: this.currentTime }),
+          ]);
+          const { index = 0, score = 0 } = lineScoreInfo?.data || {};
+          const { totalScore = 0 } = totalScoreInfo?.data || {};
+          let lineScore = 0;
           if (this.currentLine == index) {
-            lineScore = score >= 0 ? score : 0
+            lineScore = score >= 0 ? score : 0;
           }
-          this.emit("lineChanged", { lineNumber: this.currentLine, lineScore, totalScore })
-          break
+          this.emit("lineChanged", {
+            lineNumber: this.currentLine,
+            lineScore,
+            totalScore,
+          });
+          break;
         }
       }
     }
@@ -509,28 +558,28 @@ export class Engine {
 
   private async _dealAudioPcm(pcm: Float32Array) {
     if (this.bgmStatus !== BgmStatus.PLAYING) {
-      return
+      return;
     }
     //调用process后会计算音高评分
     this.yinsudaClient.processScore({ buffer: pcm, pts: this.currentTime });
     var levelInfo = await this.yinsudaClient.getRealTimePitch();
-    const realPitch = levelInfo?.data?.pitch || 0
-    this.emit("pitchChanged", { realPitch: realPitch, time: this.currentTime })
+    const realPitch = levelInfo?.data?.pitch || 0;
+    this.emit("pitchChanged", { realPitch: realPitch, time: this.currentTime });
   }
 
   private _startBgmTimer() {
     if (this._bgmTimerStart) {
-      return
+      return;
     }
-    this._bgmTimerStart = true
+    this._bgmTimerStart = true;
 
     const id = setInterval(() => {
-      this.currentTime = this.getBgmProgress()
-      this.emit("progressChanged", { time: this.currentTime })
-      this._dealLine()
-    }, PROGRESS_INTERVAL_TIME)
+      this.currentTime = this.getBgmProgress();
+      this.emit("progressChanged", { time: this.currentTime });
+      this._dealLine();
+    }, PROGRESS_INTERVAL_TIME);
 
-    this._intervalIds.push(id)
+    this._intervalIds.push(id);
   }
 
   private _pauseBgm() {
@@ -541,25 +590,22 @@ export class Engine {
     }
   }
 
-
   private _resumeBgm() {
     if (this.bgmType === BgmType.ORIGINAL) {
-      this.originalBgmTrack?.resumeProcessAudioBuffer()
+      this.originalBgmTrack?.resumeProcessAudioBuffer();
     } else {
-      this.accompanyBgmTrack?.resumeProcessAudioBuffer()
+      this.accompanyBgmTrack?.resumeProcessAudioBuffer();
     }
   }
-
 
   private _handleSourceStateChange(currentState: any) {
-    logger.debug("bgm source state change", currentState)
+    logger.debug("bgm source state change", currentState);
     if (currentState == "stopped") {
-      this.reset()
+      this.reset();
       this.emit("statusChanged", {
         status: this.bgmStatus,
-        type: this.bgmType
-      })
+        type: this.bgmType,
+      });
     }
   }
-
 }
