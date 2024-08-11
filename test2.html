@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaStream Gain Control</title>
+</head>
+<body>
+    <h1>MediaStream Gain Control</h1>
+    <button id="start-button">Start</button>
+    <button id="stop-button" disabled>Stop</button>
+    <label for="gain-slider">Gain:</label>
+    <input type="range" id="gain-slider" min="0" max="2" value="1" step="0.01">
+    <script>
+        let audioContext = null;
+        let mediaStream = null;
+        let mediaStreamSource = null;
+        let gainNode = null;
+
+        document.getElementById('start-button').addEventListener('click', async () => {
+            // Create AudioContext
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Get user media (microphone input)
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Create MediaStreamSource from the media stream
+            mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
+
+            // Create GainNode
+            gainNode = audioContext.createGain();
+
+            // Connect the nodes
+            mediaStreamSource.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Enable stop button
+            document.getElementById('stop-button').disabled = false;
+
+            // Disable start button
+            document.getElementById('start-button').disabled = true;
+        });
+
+        document.getElementById('stop-button').addEventListener('click', () => {
+            // Disconnect the nodes
+            if (gainNode) {
+                gainNode.disconnect();
+            }
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+            }
+
+            // Stop the media stream tracks
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            // Close the AudioContext
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            // Disable stop button
+            document.getElementById('stop-button').disabled = true;
+
+            // Enable start button
+            document.getElementById('start-button').disabled = false;
+        });
+
+        document.getElementById('gain-slider').addEventListener('input', (event) => {
+            const gainValue = parseFloat(event.target.value);
+            if (gainNode) {
+                gainNode.gain.setValueAtTime(gainValue, audioContext.currentTime);
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,46 +1,184 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Audio Decode Example</title>
-</head>
-<body>
-    <button id="playButton">Play Audio</button>
+<html lang="en">
+    <head>
+        <title>Audio Decode Example</title>
+    </head>
+    <body>
+        <button id="playButton">Play Audio</button>
+        <button id="playButton2">captureAndPlayAudio</button>
+        <button id="pause">pause</button>
+        <button id="resume">resume</button>
+        <button id="seekTime">seekTime</button>
 
-    <script>
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        <script>
+            class Mp3MediaStreamTrackManager {
+                constructor(context) {
+                    this.caches = {};
+                    this.audioContext = context;
+                }
 
-        async function loadAudioFile(url) {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            return arrayBuffer;
-        }
+                async createMediaStreamTrackFromMp3(mp3Data, sourceKey) {
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
 
-        async function decodeAudioData(arrayBuffer) {
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            return audioBuffer;
-        }
+                    if (this.caches[sourceKey]) {
+                        // 停止当前播放并释放资源
+                        const cache = this.caches[sourceKey];
+                        cache.release();
+                        delete this.caches[sourceKey];
+                    }
 
-        // function playAudio(audioBuffer) {
-        //     const source = audioContext.createBufferSource();
-        //     source.buffer = audioBuffer;
-        //     source.connect(audioContext.destination);
-        //     source.start(0);
-        // }
+                    return new Promise((resolve, reject) => {
+                        const mediaSource = new MediaSource();
+                        const audioEl = document.createElement("audio");
+                        const mediaElementSource = this.audioContext.createMediaElementSource(audioEl);
+                        const destination = this.audioContext.createMediaStreamDestination();
+                        mediaElementSource.connect(destination);
 
-        const files = "226872391 28193209 32062130 40289835 630965613".split(" ");
-        console.log(files);
+                        // document.body.appendChild(audioEl);
 
-        document.getElementById('playButton').addEventListener('click', async () => {
-            try {
-                const fileUrl = `/yinsuda/${files[Math.floor(Math.random()*5)]}/output1.mp3`;
-                const arrayBuffer = await loadAudioFile(fileUrl);
-                const audioBuffer = await decodeAudioData(arrayBuffer);
-                // playAudio(audioBuffer);
-            } catch (error) {
-                console.error('Error loading or decoding audio data:', error);
+                        let status = {
+                            currentTime: 0,
+                            duration: 0,
+                        };
+
+                        // 定期更新播放时间信息
+                        const updateTime = () => {
+                            status.currentTime = audioEl.currentTime;
+                            status.duration = audioEl.duration;
+                            console.log(`Current Time: ${audioEl.currentTime}`);
+                            console.log(`Duration: ${audioEl.duration}`);
+                        };
+                        audioEl.addEventListener("timeupdate", updateTime);
+
+                        this.caches[sourceKey] = {
+                            release,
+                        };
+
+                        function release() {
+                            console.log("release====call");
+                            audioEl.pause();
+                            URL.revokeObjectURL(audioEl.src);
+                            audioEl.removeEventListener("timeupdate", updateTime);
+                            audioEl.src = ""; // 解除音频文件的引用
+                            audioEl.load(); // 重新加载空的音频源
+                            mediaSource.removeEventListener("sourceopen", handleSourceOpen);
+                        }
+
+                        function handleSourceOpen() {
+                            console.log("open====");
+                            const sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+                            sourceBuffer.addEventListener("updateend", () => {
+                                if (!sourceBuffer.updating && mediaSource.readyState === "open") {
+                                    mediaSource.endOfStream();
+                                }
+                            });
+                            sourceBuffer.appendBuffer(mp3Data);
+                            resolve({
+                                mediaTrack: destination.stream.getAudioTracks()[0],
+                                audioEl,
+                                status,
+                            });
+                        }
+                        mediaSource.addEventListener("sourceopen", handleSourceOpen);
+
+                        audioEl.src = URL.createObjectURL(mediaSource);
+                        audioEl.controls=true;
+                        // 确保音量不为零，且未静音
+                        //   audioEl.volume = 1.0;
+                        //   audioEl.muted = false;
+
+                        // 确保 AudioContext 是 running 状态
+                        // if (this.audioContext.state === "suspended") {
+                        //     this.audioContext.resume();
+                        // }
+
+                        audioEl.play();
+
+                        mediaSource.addEventListener("error", (e) => {
+                            reject(e);
+                        });
+                    });
+                }
             }
-        });
-    </script>
-</body>
-</html>
 
+            // 使用示例
+            const manager = new Mp3MediaStreamTrackManager();
+        </script>
+
+        <script>
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            async function loadAudioFile(url) {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                return arrayBuffer;
+            }
+
+            async function decodeAudioData(arrayBuffer) {
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                return audioBuffer;
+            }
+
+            // function playAudio(audioBuffer) {
+            //     const source = audioContext.createBufferSource();
+            //     source.buffer = audioBuffer;
+            //     source.connect(audioContext.destination);
+            //     source.start(0);
+            // }
+
+            const files = "226872391 28193209 32062130 40289835 630965613".split(" ");
+            console.log(files);
+
+            document.getElementById("playButton").addEventListener("click", async () => {
+                try {
+                    const fileUrl = `/yinsuda/${files[Math.floor(Math.random() * 5)]}/output1.mp3`;
+                    const arrayBuffer = await loadAudioFile(fileUrl);
+                    manager.createMediaStreamTrackFromMp3(arrayBuffer, "test123").then(res=>{
+                        window.globalTrack = res;
+                    })
+                    // const audioBuffer = await decodeAudioData(arrayBuffer);
+                    // playAudio(audioBuffer);
+                } catch (error) {
+                    console.error("Error loading or decoding audio data:", error);
+                }
+            });
+        </script>
+
+        <script>
+            document.getElementById("playButton2").addEventListener("click", function (event) {
+                captureAndPlayAudio();
+            });
+
+            async function captureAndPlayAudio() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const audioTrack = stream.getAudioTracks()[0];
+
+                    // 创建一个新的 MediaStream 只包含这个音频轨道
+                    const newStream = new MediaStream([audioTrack]);
+
+                    // 将 MediaStream 绑定到音频元素进行播放
+                    const audioElement = document.createElement("audio");
+                    audioElement.srcObject = newStream;
+                    audioElement.play();
+                } catch (error) {
+                    console.error("Error capturing audio:", error);
+                }
+            }
+
+            // captureAndPlayAudio();
+
+            document.getElementById("pause").addEventListener("click",function(){
+                manager.audioContext.suspend();
+            });
+            document.getElementById("resume").addEventListener("click",function(){
+                manager.audioContext.resume();
+            }) 
+            document.getElementById("seekTime").addEventListener("click",function(){
+                window.globalTrack.audioEl.currentTime=150;
+            })
+        </script>
+    </body>
+</html>

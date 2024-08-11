@@ -3,7 +3,7 @@
     <section>
       <button @click="triggerStart">切歌</button>
     </section>
-    <div v-if="hasUserSet">
+    <div>
 
       <section>
         <section v-if="hasGenBgmTracks">
@@ -59,7 +59,7 @@ window.engine = engine;
 engine.setLogLevel(0)
 let MOCK_SONG_ID = "";
 
-let index = 0;
+let index = 3;
 let songList = ["32062130", "40289835", "630965613", "28193209", "226872391"]
 
 export default {
@@ -106,11 +106,12 @@ export default {
   methods: {
     // 切歌
     async triggerStart() {
-      engine.reset();
+      // engine.reset();
       index++;
       MOCK_SONG_ID = songList[index % 5];
       console.log('triggerStart====----')
       await this.setUser();
+      engine.prepare();
       await this.getLyric();
       await this.getPitchData();
       await this.genBgmTracks();
@@ -140,7 +141,7 @@ export default {
       console.log('创建麦克风...');
       // 创建 mic 音轨
       this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-        AEC: true
+        AEC: false
       });
       console.log(this.localAudioTrack);
       // 设置音轨

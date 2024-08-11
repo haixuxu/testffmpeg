@@ -4,6 +4,7 @@ import { LogLevel, EngineConfig, LyricModel, EngineEvents, BgmStatus, BgmType } 
 import mitt, { Emitter, Handler } from "mitt";
 import { parseKrcString } from "./utils";
 import "./yisudaSdk/index.umd.js";
+import pcmCode from "./pcm-processer?raw";
 
 import { manager } from "./mock/Mp3MediaStreamTrackManager";
 
@@ -13,7 +14,7 @@ const PID = import.meta.env.VITE_APP_ID;
 const APP_KEY = import.meta.env.VITE_APP_KEY;
 const SCORE_HARD_LEVEL = 5;
 const PROGRESS_INTERVAL_TIME = 20;
-let lasttime:number=0;
+let lasttime: number = 0;
 // @ts-ignore
 const AgoraRTC = window.AgoraRTC;
 export class Engine {
@@ -239,15 +240,25 @@ export class Engine {
             throw new Error("audioTrack is not defined");
         }
         console.log("addModule pcm....");
-        await this.audioContext.audioWorklet.addModule("https://y-dev.tuwan.com/pcm-processor.js");
+        // 创建 Blob URL
+        const blob = new Blob([pcmCode], { type: "application/javascript" });
+        const url = URL.createObjectURL(blob);
+
+        await this.audioContext.audioWorklet.addModule(url);
         console.log("addModule pcm ok");
         const audioWorkletNode = new AudioWorkletNode(this.audioContext, "pcm-processor");
         const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack();
         this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(new MediaStream([audioMediaStreamTrack]));
+        // Create GainNode
+        // const gainNode = this.audioContext.createGain();
+        // // gainNode.gain.value = 2;
+        // // Connect the nodes
+        // this.mediaStreamAudioSourceNode.connect(gainNode);
+        // gainNode.connect(audioWorkletNode);
         this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
         console.log("audioWorkletNode====onmessage=====");
         audioWorkletNode.port.onmessage = (event) => {
-            console.log("1111  Received message from PCMProcessor:", event.data);
+            // console.log("1111  Received message from PCMProcessor:", event.data);
             const pcm = event.data?.pcm;
             if (pcm) {
                 this._dealAudioPcm(pcm);
@@ -323,7 +334,6 @@ export class Engine {
             this._dealLine();
         }, PROGRESS_INTERVAL_TIME);
     }
-
 
     toggleBgmTrack() {
         if (this.bgmType == BgmType.ORIGINAL) {
@@ -428,15 +438,19 @@ export class Engine {
     }
 
     private async _dealAudioPcm(pcm: Float32Array) {
-        if (this.bgmStatus !== BgmStatus.PLAYING) {
-            return;
-        }
-        console.log("handle deal audio pcm===", this.currentTime);
+        // if (this.bgmStatus !== BgmStatus.PLAYING) {
+        //     return;
+        // }
         //调用process后会计算音高评分
-        this.yinsudaClient.processScore({ buffer: pcm, pts: this.currentTime });
+        const currentTime = Math.round(this.currentTime);
+        console.log("handle deal audio pcm===", this.currentTime);
+        this.yinsudaClient.processScore({ buffer: pcm, pts: currentTime });
         var levelInfo = await this.yinsudaClient.getRealTimePitch();
         const realPitch = levelInfo?.data?.pitch || 0;
-        console.log("realPitch====", realPitch);
+        if (realPitch > 0) {
+            console.log("bitch....", realPitch);
+        }
+        // console.log("realPitch====", realPitch);
         this.emit("pitchChanged", { realPitch: realPitch, time: this.currentTime });
     }
 
