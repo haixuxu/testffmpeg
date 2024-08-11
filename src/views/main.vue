@@ -1,8 +1,6 @@
 <template>
   <div>
     <section>
-      <button @click="triggerStart">切歌</button>
-
       <button @click="setUser" v-if="!hasUserSet">setUser (need first)</button>
     </section>
     <div v-if="hasUserSet">
@@ -61,7 +59,7 @@ const AgoraRTC = window.AgoraRTC
 let engine = new Engine();
 window.engine = engine;
 engine.setLogLevel(0)
-let MOCK_SONG_ID = "";
+let MOCK_SONG_ID = "630965613";
 
 let index= 0;
 let songList = ["32062130","40289835","630965613","28193209","226872391"]
