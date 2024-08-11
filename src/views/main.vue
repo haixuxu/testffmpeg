@@ -1,48 +1,44 @@
 <template>
-  <div>
-    <section>
-      <button @click="triggerStart">切歌</button>
-    </section>
     <div>
-
-      <section>
-        <section v-if="hasGenBgmTracks">
-          <div>
-            <div>当前音轨： {{ bgmType === 1 ? "原唱" : "伴奏" }}</div>
-            <button @click="playBgm">播放</button>
-            <button @click="toggleBgmTrack">切换音轨</button>
-            <button @click="toggleBgmStatus">切换播放状态 {{ bgmStatus == 3 ? "playing" : "pause" }}</button>
-            <button @click="seekBgmProgress">seek bgm progress 切换进度</button>
-            <button @click="volumeDown">音量-</button>
-            <button @click="volumeUp">音量+</button>
-          </div>
+        <section>
+            <button @click="triggerStart">切歌</button>
         </section>
-      </section>
-      <section>
-        <button @click="createAudioTrack" v-if="!enableMicro">createAudioTrack (麦克风)</button>
-        <button @click="stopProcessAudio" v-if="enableMicro">stopProcessAudio (停止获取麦克风pcm数据)</button>
-      </section>
-      <section v-if="lyric.content">
-        <div>{{ lyric.ti }} --- {{ lyric.ar }}</div>
-        <LyricsView :lyric="lyric" :currentTime="currentTime" :currentLine="currentLine"></LyricsView>
-      </section>
-      <section class="lineScoreWrapper">
-        <LineScoreView :pitchData="pitchData" :currentTime="currentTime" ref="lineScoreViewRef">
-        </LineScoreView>
-      </section>
-      <section>
-        <div>currentTime:{{ Number(currentTime).toFixed(3) }}/
-          {{ Math.floor((currentTime / 1000) / 60) + ':' + Math.floor((currentTime / 1000)) % 60 }}</div>
-        <div>currentLine: {{ currentLine }}</div>
-        <div>realPitch: {{ realPitch }}</div>
-        <div>currentLineScore: {{ currentLineScore }}</div>
-        <div>totalScore: {{ totalScore }}</div>
-        <div>bgmStatus: {{ bgmStatus }}</div>
-        <div>bgmType: {{ bgmType }}</div>
-      </section>
+        <div>
+            <section>
+                <section v-if="hasGenBgmTracks">
+                    <div>
+                        <div>当前音轨： {{ bgmType === 1 ? "原唱" : "伴奏" }}</div>
+                        <button @click="playBgm">播放</button>
+                        <button @click="toggleBgmTrack">切换音轨</button>
+                        <button @click="toggleBgmStatus">切换播放状态 {{ bgmStatus == 3 ? "playing" : "pause" }}</button>
+                        <button @click="seekBgmProgress">seek bgm progress 切换进度</button>
+                        <button @click="volumeDown">音量-</button>
+                        <button @click="volumeUp">音量+</button>
+                    </div>
+                </section>
+            </section>
+            <section>
+                <button @click="createAudioTrack" v-if="!enableMicro">createAudioTrack (麦克风)</button>
+                <button @click="stopProcessAudio" v-if="enableMicro">stopProcessAudio (停止获取麦克风pcm数据)</button>
+            </section>
+            <section v-if="lyric.content">
+                <div>{{ lyric.ti }} --- {{ lyric.ar }}</div>
+                <LyricsView :lyric="lyric" :currentTime="currentTime" :currentLine="currentLine"></LyricsView>
+            </section>
+            <section class="lineScoreWrapper">
+                <LineScoreView :pitchData="pitchData" :currentTime="currentTime" ref="lineScoreViewRef"> </LineScoreView>
+            </section>
+            <section>
+                <div>currentTime:{{ Number(currentTime).toFixed(3) }}/ {{ Math.floor(currentTime / 1000 / 60) + ":" + (Math.floor(currentTime / 1000) % 60) }}</div>
+                <div>currentLine: {{ currentLine }}</div>
+                <div>realPitch: {{ realPitch }}</div>
+                <div>currentLineScore: {{ currentLineScore }}</div>
+                <div>totalScore: {{ totalScore }}</div>
+                <div>bgmStatus: {{ bgmStatus }}</div>
+                <div>bgmType: {{ bgmType }}</div>
+            </section>
+        </div>
     </div>
-
-  </div>
 </template>
 
 <script>
@@ -50,181 +46,172 @@ import LyricsView from "../components/LyricsView/index.vue";
 import LineScoreView from "../components/LineScoreView/index.vue";
 import { Engine, BgmStatus, BgmType } from "../engine2/index";
 
-
-
-
-const AgoraRTC = window.AgoraRTC
+const AgoraRTC = window.AgoraRTC;
 let engine = new Engine();
 window.engine = engine;
-engine.setLogLevel(0)
+engine.setLogLevel(0);
 let MOCK_SONG_ID = "";
 
-let index = 3;
-let songList = ["32062130", "40289835", "630965613", "28193209", "226872391"]
+let index = 2;
+let songList = ["32062130", "40289835", "630965613", "28193209", "226872391"];
 
 export default {
-  components: {
-    LyricsView,
-    LineScoreView
-  },
-  data() {
-    return {
-      hasUserSet: false, // 是否设置用户
-      hasGenBgmTracks: false, // 是否生成音轨
-      localAudioTrack: null, // 本地音频
-      currentTime: 0, // 当前时间 ms
-      currentLine: 0, // 当前行
-      lineScore: 0, // 当前行分数
-      totalScore: 0, // 总分
-      currentLineScore: 0, // 当前行分数
-      lyric: {}, // 歌词数据
-      pitchData: null, // 音高数据
-      realPitch: 0, // 实时音高
-      enableMicro: false,
-      volume:100,
-      bgmStatus: engine.bgmStatus,
-      bgmType: engine.bgmType
-    };
-  },
-  async created() {
-
-  },
-  mounted() {
-    this.listenEngineEvents();
-    // this.startFn();
-    // this.triggerStart();
-  },
-  async beforeDestroy() {
-    engine.destory();
-  },
-  watch: {
-
-  },
-  computed: {
-
-  },
-  methods: {
-    // 切歌
-    async triggerStart() {
-      // engine.reset();
-      index++;
-      MOCK_SONG_ID = songList[index % 5];
-      console.log('triggerStart====----')
-      await this.setUser();
-      engine.prepare();
-      await this.getLyric();
-      await this.getPitchData();
-      await this.genBgmTracks();
-      this.playBgm();
+    components: {
+        LyricsView,
+        LineScoreView,
     },
-    async setUser() {
-      // 点点uid 声网uid
-      // const MOCK_UID = Math.floor(Math.random() * 1000000000) + "";
-      const MOCK_UID = 16089384 + "";
-      await engine.setUser(MOCK_UID);
-      this.hasUserSet = true;
+    data() {
+        return {
+            hasUserSet: false, // 是否设置用户
+            hasGenBgmTracks: false, // 是否生成音轨
+            localAudioTrack: null, // 本地音频
+            currentTime: 0, // 当前时间 ms
+            currentLine: 0, // 当前行
+            lineScore: 0, // 当前行分数
+            totalScore: 0, // 总分
+            currentLineScore: 0, // 当前行分数
+            lyric: {}, // 歌词数据
+            pitchData: null, // 音高数据
+            realPitch: 0, // 实时音高
+            enableMicro: false,
+            volume: 100,
+            bgmStatus: engine.bgmStatus,
+            bgmType: engine.bgmType,
+        };
     },
-    async getLyric() {
-      this.lyric = await engine.getLyric(MOCK_SONG_ID, true);
+    async created() {},
+    mounted() {
+        this.listenEngineEvents();
+        // this.startFn();
+        // this.triggerStart();
     },
-    async getPitchData() {
-      this.pitchData = await engine.getPitchData(MOCK_SONG_ID);
+    async beforeDestroy() {
+        engine.destory();
     },
-    prepare() {
-      engine.prepare()
+    watch: {},
+    computed: {},
+    methods: {
+        // 切歌
+        async triggerStart() {
+            // engine.reset();
+            index++;
+            MOCK_SONG_ID = songList[index % 5];
+            console.log("triggerStart====----");
+            await this.setUser();
+            await this.getLyric();
+            await this.getPitchData();
+            engine.prepare();
+            await this.genBgmTracks();
+            this.playBgm();
+        },
+        async setUser() {
+            // 点点uid 声网uid
+            // const MOCK_UID = Math.floor(Math.random() * 1000000000) + "";
+            const MOCK_UID = 16089384 + "";
+            await engine.setUser(MOCK_UID);
+            this.hasUserSet = true;
+        },
+        async getLyric() {
+            this.lyric = await engine.getLyric(MOCK_SONG_ID, true);
+        },
+        async getPitchData() {
+            this.pitchData = await engine.getPitchData(MOCK_SONG_ID);
+        },
+        prepare() {
+            engine.prepare();
+        },
+        async genBgmTracks(fn) {
+            await engine.genBgmTracks(MOCK_SONG_ID, true, fn);
+            this.hasGenBgmTracks = true;
+        },
+        async createAudioTrack() {
+            console.log("创建麦克风...");
+            // 创建 mic 音轨
+            this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+                AEC: false,
+            });
+            console.log(this.localAudioTrack);
+            // 设置音轨
+            engine.setAudioTrack(this.localAudioTrack);
+        
+            // 开启音频处理 （实时pitch）
+            engine.startProcessAudio();
+            this.enableMicro = true;
+        },
+        stopProcessAudio() {
+            engine.stopProcessAudio();
+            this.enableMicro = false;
+        },
+        playBgm() {
+            engine.playBgm(this.bgmType);
+        },
+        toggleBgmTrack() {
+            engine.toggleBgmTrack();
+        },
+        toggleBgmStatus() {
+            engine.toggleBgmStatus();
+        },
+        seekBgmProgress() {
+            const MOCK_TIME = 105070; // ms
+            engine.seekBgmProgress(MOCK_TIME);
+        },
+        setBgmVolume(volume) {
+            engine.setBgmVolume(volume);
+        },
+        volumeDown() {
+            this.volume -= 10;
+            engine.setBgmVolume(this.volume);
+        },
+        volumeUp() {
+            this.volume += 10;
+            engine.setBgmVolume(this.volume);
+        },
+        listenEngineEvents() {
+            engine.on("lineChanged", (data) => {
+                const { lineNumber, lineScore, totalScore } = data;
+                this.currentLine = lineNumber;
+                this.currentLineScore = lineScore;
+                this.totalScore = totalScore;
+            });
+            engine.on("progressChanged", (data) => {
+                const { time } = data;
+                this.currentTime = time;
+            });
+            engine.on("statusChanged", (data) => {
+                const { status, type } = data;
+                this.bgmStatus = status;
+                this.bgmType = type;
+                if (status == BgmStatus.IDLE) {
+                    // 播放结束
+                    this.currentTime = 0;
+                    this.currentLine = 0;
+                    this.currentLineScore = 0;
+                    this.totalScore = 0;
+                    this.realPitch = 0;
+                }
+            });
+            engine.on("pitchChanged", (data) => {
+                const { realPitch, time } = data;
+                this.realPitch = realPitch;
+                // TODO: time 为 realPitch 对应的时间点
+            });
+        },
     },
-    async genBgmTracks(fn) {
-      await engine.genBgmTracks(MOCK_SONG_ID, true, fn);
-      this.hasGenBgmTracks = true;
-    },
-    async createAudioTrack() {
-      console.log('创建麦克风...');
-      // 创建 mic 音轨
-      this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-        AEC: false
-      });
-      console.log(this.localAudioTrack);
-      // 设置音轨
-      engine.setAudioTrack(this.localAudioTrack);
-      // 开启音频处理 （实时pitch）
-      engine.startProcessAudio()
-      this.enableMicro = true;
-    },
-    stopProcessAudio() {
-      engine.stopProcessAudio()
-      this.enableMicro = false;
-    },
-    playBgm() {
-      engine.playBgm(this.bgmType)
-    },
-    toggleBgmTrack() {
-      engine.toggleBgmTrack()
-    },
-    toggleBgmStatus() {
-      engine.toggleBgmStatus()
-    },
-    seekBgmProgress() {
-      const MOCK_TIME = 105070 // ms
-      engine.seekBgmProgress(MOCK_TIME)
-    },
-    setBgmVolume(volume) {
-      engine.setBgmVolume(volume)
-    },
-    volumeDown(){
-      this.volume-=10;
-      engine.setBgmVolume(this.volume)
-    },
-    volumeUp(){
-      this.volume+=10;
-      engine.setBgmVolume(this.volume)
-    },
-    listenEngineEvents() {
-      engine.on("lineChanged", (data) => {
-        const { lineNumber, lineScore, totalScore } = data
-        this.currentLine = lineNumber
-        this.currentLineScore = lineScore
-        this.totalScore = totalScore
-      })
-      engine.on("progressChanged", (data) => {
-        const { time } = data
-        this.currentTime = time
-      })
-      engine.on("statusChanged", (data) => {
-        const { status, type } = data
-        this.bgmStatus = status
-        this.bgmType = type
-        if (status == BgmStatus.IDLE) {
-          // 播放结束
-          this.currentTime = 0
-          this.currentLine = 0
-          this.currentLineScore = 0
-          this.totalScore = 0
-          this.realPitch = 0
-        }
-      })
-      engine.on("pitchChanged", data => {
-        const { realPitch, time } = data
-        this.realPitch = realPitch
-        // TODO: time 为 realPitch 对应的时间点 
-      })
-    },
-  }
-}
+};
 </script>
 
 <style lang="scss" scoped>
 section {
-  margin: 5px;
+    margin: 5px;
 }
 
 button {
-  margin: 2px;
+    margin: 2px;
 }
 
-
 .lineScoreWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>

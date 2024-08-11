@@ -250,12 +250,12 @@ export class Engine {
         const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack();
         this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(new MediaStream([audioMediaStreamTrack]));
         // Create GainNode
-        // const gainNode = this.audioContext.createGain();
-        // // gainNode.gain.value = 2;
-        // // Connect the nodes
-        // this.mediaStreamAudioSourceNode.connect(gainNode);
-        // gainNode.connect(audioWorkletNode);
-        this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = 1.5;
+        // Connect the nodes
+        this.mediaStreamAudioSourceNode.connect(gainNode);
+        gainNode.connect(audioWorkletNode);
+        // this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
         console.log("audioWorkletNode====onmessage=====");
         audioWorkletNode.port.onmessage = (event) => {
             // console.log("1111  Received message from PCMProcessor:", event.data);
@@ -443,12 +443,12 @@ export class Engine {
         // }
         //调用process后会计算音高评分
         const currentTime = Math.round(this.currentTime);
-        console.log("handle deal audio pcm===", this.currentTime);
+        // console.log("handle deal audio pcm===", this.currentTime);
         this.yinsudaClient.processScore({ buffer: pcm, pts: currentTime });
         var levelInfo = await this.yinsudaClient.getRealTimePitch();
         const realPitch = levelInfo?.data?.pitch || 0;
         if (realPitch > 0) {
-            console.log("bitch....", realPitch);
+            console.log("realPitch....", realPitch);
         }
         // console.log("realPitch====", realPitch);
         this.emit("pitchChanged", { realPitch: realPitch, time: this.currentTime });

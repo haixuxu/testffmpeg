@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone Audio Playback</title>
+</head>
+<body>
+    <h1>Microphone Audio Playback</h1>
+    <button id="start-button">Start</button>
+    <button id="stop-button" disabled>Stop</button>
+    <label for="gain-slider">Gain:</label>
+    <input type="range" id="gain-slider" min="0" max="2" value="1" step="0.01">
+    <audio id="audio-output" controls autoplay></audio>
+
+    <script>
+        let audioContext = null;
+        let mediaStream = null;
+        let mediaStreamSource = null;
+        let gainNode = null;
+        let audioElement = document.getElementById('audio-output');
+
+        document.getElementById('start-button').addEventListener('click', async () => {
+            try {
+                // 获取用户媒体 (麦克风输入)
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // 将媒体流直接分配给 audio 标签
+                audioElement.srcObject = mediaStream;
+
+                // 创建 AudioContext
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // 创建 AudioWorkletProcessor 的代码和 Blob URL
+                const processorCode = `
+                class GainProcessor extends AudioWorkletProcessor {
+                    static get parameterDescriptors() {
+                        return [{
+                            name: 'gain',
+                            defaultValue: 1,
+                            minValue: 0,
+                            maxValue: 2
+                        }];
+                    }
+
+                    process(inputs, outputs, parameters) {
+                        const input = inputs[0];
+                        const output = outputs[0];
+
+                        const gain = parameters.gain;
+                        for (let channel = 0; channel < input.length; channel++) {
+                            const inputChannel = input[channel];
+                            const outputChannel = output[channel];
+                            for (let i = 0; i < inputChannel.length; i++) {
+                                outputChannel[i] = inputChannel[i] * gain[0];
+                            }
+                        }
+
+                        return true;
+                    }
+                }
+
+                registerProcessor('gain-processor', GainProcessor);
+                `;
+
+                const blob = new Blob([processorCode], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+
+                // 添加模块
+                await audioContext.audioWorklet.addModule(url);
+
+                // 创建 GainNode
+                gainNode = new AudioWorkletNode(audioContext, 'gain-processor');
+
+                // 创建 MediaStreamSource
+                mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
+
+                // 连接节点
+                mediaStreamSource.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // 启动时设置默认增益
+                gainNode.parameters.get('gain').value = parseFloat(document.getElementById('gain-slider').value);
+
+                // 启用停止按钮
+                document.getElementById('stop-button').disabled = false;
+
+                // 禁用启动按钮
+                document.getElementById('start-button').disabled = true;
+
+                console.log('Audio setup completed');
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+            }
+        });
+
+        document.getElementById('stop-button').addEventListener('click', () => {
+            // 断开节点
+            if (gainNode) {
+                gainNode.disconnect();
+            }
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+            }
+
+            // 停止媒体流轨道
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            // 关闭 AudioContext
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            // 禁用停止按钮
+            document.getElementById('stop-button').disabled = true;
+
+            // 启用启动按钮
+            document.getElementById('start-button').disabled = false;
+
+            console.log('Audio stopped and cleaned up');
+        });
+
+        document.getElementById('gain-slider').addEventListener('input', (event) => {
+            const gainValue = parseFloat(event.target.value);
+            if (gainNode) {
+                gainNode.parameters.get('gain').setValueAtTime(gainValue, audioContext.currentTime);
+                console.log('Gain value set to:', gainValue);
+            }
+        });
+    </script>
+</body>
+</html>
+
