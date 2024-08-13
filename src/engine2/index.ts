@@ -243,22 +243,25 @@ export class Engine {
         // 创建 Blob URL
         const blob = new Blob([pcmCode], { type: "application/javascript" });
         const url = URL.createObjectURL(blob);
-
-        await this.audioContext.audioWorklet.addModule(url);
+        await this.audioContext.audioWorklet.addModule(url).catch(err=>null);
         console.log("addModule pcm ok");
+
         const audioWorkletNode = new AudioWorkletNode(this.audioContext, "pcm-processor");
+        console.log('new AudioWorkletNode');
         const audioMediaStreamTrack = this.audioTrack.getMediaStreamTrack();
+        console.log('new getMediaStreamTrack');
         this.mediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(new MediaStream([audioMediaStreamTrack]));
+        console.log('new createMediaStreamSource');
         // Create GainNode
-        const gainNode = this.audioContext.createGain();
-        gainNode.gain.value = 1.5;
-        // Connect the nodes
-        this.mediaStreamAudioSourceNode.connect(gainNode);
-        gainNode.connect(audioWorkletNode);
-        // this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
+        // const gainNode = this.audioContext.createGain();
+        // // Connect the nodes
+        // gainNode.gain.value = 1.5;
+        // this.mediaStreamAudioSourceNode.connect(gainNode);
+        // gainNode.connect(audioWorkletNode);
+        this.mediaStreamAudioSourceNode.connect(audioWorkletNode);
         console.log("audioWorkletNode====onmessage=====");
         audioWorkletNode.port.onmessage = (event) => {
-            // console.log("1111  Received message from PCMProcessor:", event.data);
+            console.log("1111  Received message from PCMProcessor:", event.data);
             const pcm = event.data?.pcm;
             if (pcm) {
                 this._dealAudioPcm(pcm);
@@ -299,6 +302,7 @@ export class Engine {
             // 伴奏
             this.accTrackBox = await manager.createTrackBoxFromMp3(mp3Data[0], "accompany");
             let localAudioTrack1 = await AgoraRTC.createCustomAudioTrack({ mediaStreamTrack: this.accTrackBox.mediaTrack });
+            localAudioTrack1.play();
             this.accTrackBox.localAudioTrack = localAudioTrack1;
             this.accTrackBox.on("source-state-change", this._handleSourceStateChange.bind(this));
         }
@@ -306,6 +310,7 @@ export class Engine {
             // 原唱
             let trackbox = await manager.createTrackBoxFromMp3(mp3Data[1], "original");
             let localAudioTrack2 = await AgoraRTC.createCustomAudioTrack({ mediaStreamTrack: trackbox.mediaTrack });
+            localAudioTrack2.play();
             trackbox.localAudioTrack = localAudioTrack2;
             this.orgTrackBox = trackbox;
             trackbox.on("source-state-change", this._handleSourceStateChange.bind(this));
@@ -316,8 +321,11 @@ export class Engine {
     }
 
     playBgm(bgmType: BgmType) {
-        this.orgTrackBox?.localAudioTrack.play();
-        this.accTrackBox?.localAudioTrack.play();
+        this.orgTrackBox?.play();
+        this.accTrackBox?.play();
+
+        // this.orgTrackBox?.localAudioTrack.play();
+        // this.accTrackBox?.localAudioTrack.play();
         this.bgmStatus = BgmStatus.PLAYING;
         this.bgmType = bgmType;
 
@@ -443,7 +451,7 @@ export class Engine {
         // }
         //调用process后会计算音高评分
         const currentTime = Math.round(this.currentTime);
-        // console.log("handle deal audio pcm===", this.currentTime);
+        console.log("handle deal audio pcm===", this.currentTime);
         this.yinsudaClient.processScore({ buffer: pcm, pts: currentTime });
         var levelInfo = await this.yinsudaClient.getRealTimePitch();
         const realPitch = levelInfo?.data?.pitch || 0;

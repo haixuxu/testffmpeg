@@ -35,6 +35,10 @@ class MeidaTrackBox extends EventEmitter {
         this.context = null;
         this.mediaSource = null;
     }
+    play(){
+        this.audioEl.play(); 
+        this.status = "playing";
+    }
     pause() {
         this.audioEl.pause();
         this.status = "paused";
@@ -97,7 +101,7 @@ class Mp3MediaStreamTrackManager {
             mediaSource.addEventListener("sourceopen", handleSourceOpen);
 
             audioEl.src = URL.createObjectURL(mediaSource);
-            audioEl.play();
+            // audioEl.play();
 
             mediaSource.addEventListener("error", (e) => {
                 reject(e);
